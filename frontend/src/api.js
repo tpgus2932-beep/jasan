@@ -7,15 +7,46 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 export const isRemoteReadonly = Boolean(supabaseUrl && supabaseAnonKey)
 export const READONLY_MESSAGE = 'Vercel 배포 환경은 보기 전용입니다. 수정/동기화는 로컬에서만 실행하세요.'
 
+const SESSION_KEY = 'asset_manager_supabase_session'
+export const getRemoteSession = () => {
+  try {
+    return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null')
+  } catch {
+    return null
+  }
+}
+export const hasRemoteSession = () => !isRemoteReadonly || Boolean(getRemoteSession()?.access_token)
+
 const supabase = isRemoteReadonly
   ? axios.create({
       baseURL: `${supabaseUrl.replace(/\/$/, '')}/rest/v1`,
       headers: {
         apikey: supabaseAnonKey,
-        Authorization: `Bearer ${supabaseAnonKey}`,
       },
     })
   : null
+
+if (supabase) {
+  supabase.interceptors.request.use(config => {
+    const token = getRemoteSession()?.access_token || supabaseAnonKey
+    config.headers.Authorization = `Bearer ${token}`
+    return config
+  })
+}
+
+export const remoteLogin = async (email, password) => {
+  const auth = axios.create({
+    baseURL: `${supabaseUrl.replace(/\/$/, '')}/auth/v1`,
+    headers: { apikey: supabaseAnonKey, 'Content-Type': 'application/json' },
+  })
+  const { data } = await auth.post('/token?grant_type=password', { email, password })
+  localStorage.setItem(SESSION_KEY, JSON.stringify(data))
+  return data
+}
+
+export const remoteLogout = () => {
+  localStorage.removeItem(SESSION_KEY)
+}
 
 const readonlyReject = () => Promise.reject(new Error(READONLY_MESSAGE))
 
