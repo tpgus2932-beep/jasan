@@ -4,7 +4,8 @@ const api = axios.create({ baseURL: '/api' })
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-export const isRemoteReadonly = Boolean(supabaseUrl && supabaseAnonKey)
+const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+export const isRemoteReadonly = !isLocalHost && Boolean(supabaseUrl && supabaseAnonKey)
 export const READONLY_MESSAGE = 'Vercel 배포 환경은 보기 전용입니다. 수정/동기화는 로컬에서만 실행하세요.'
 
 const SESSION_KEY = 'asset_manager_supabase_session'
