@@ -8,6 +8,7 @@ from sqlalchemy import create_engine, text
 ROOT = Path(__file__).resolve().parents[1]
 SQLITE_PATH = ROOT / "backend" / "assets.db"
 BACKEND_ENV_PATH = ROOT / "backend" / ".env"
+SUPABASE_SCHEMA_PATH = ROOT / "supabase" / "schema.sql"
 
 TABLES = [
     "settings",
@@ -44,9 +45,12 @@ def normalize_url(url: str) -> str:
 
 def main():
     load_backend_env()
-    database_url = os.environ.get("DATABASE_URL", "").strip()
+    database_url = (
+        os.environ.get("SUPABASE_DATABASE_URL", "").strip()
+        or os.environ.get("DATABASE_URL", "").strip()
+    )
     if not database_url:
-        raise SystemExit("DATABASE_URL is required")
+        raise SystemExit("SUPABASE_DATABASE_URL is required")
     if not SQLITE_PATH.exists():
         raise SystemExit(f"SQLite file not found: {SQLITE_PATH}")
 
@@ -55,6 +59,9 @@ def main():
     pg = create_engine(normalize_url(database_url), pool_pre_ping=True)
 
     with pg.begin() as conn:
+        if SUPABASE_SCHEMA_PATH.exists():
+            conn.execute(text(SUPABASE_SCHEMA_PATH.read_text(encoding="utf-8")))
+
         for table in TABLES:
             exists = sqlite.execute(
                 "select name from sqlite_master where type='table' and name=?",

@@ -19,9 +19,13 @@ def _load_dotenv():
 _load_dotenv()
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "assets.db")
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+DATABASE_URL = (
+    os.getenv("DATABASE_URL", "").strip()
+    or os.getenv("SUPABASE_DATABASE_URL", "").strip()
+)
+LOCAL_DB_ONLY = os.getenv("LOCAL_DB_ONLY", "true").strip().lower() not in {"0", "false", "no"}
 
-if DATABASE_URL:
+if DATABASE_URL and not LOCAL_DB_ONLY:
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
     elif DATABASE_URL.startswith("postgresql://"):
