@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, text
 
 ROOT = Path(__file__).resolve().parents[1]
 SQLITE_PATH = ROOT / "backend" / "assets.db"
+BACKEND_ENV_PATH = ROOT / "backend" / ".env"
 
 TABLES = [
     "settings",
@@ -22,6 +23,17 @@ TABLES = [
 ]
 
 
+def load_backend_env():
+    if not BACKEND_ENV_PATH.exists():
+        return
+    for raw_line in BACKEND_ENV_PATH.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
 def normalize_url(url: str) -> str:
     if url.startswith("postgres://"):
         return url.replace("postgres://", "postgresql+psycopg://", 1)
@@ -31,6 +43,7 @@ def normalize_url(url: str) -> str:
 
 
 def main():
+    load_backend_env()
     database_url = os.environ.get("DATABASE_URL", "").strip()
     if not database_url:
         raise SystemExit("DATABASE_URL is required")
