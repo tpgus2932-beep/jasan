@@ -1,0 +1,9 @@
+backend/.env
+frontend/.env
+backend/assets.db
+backend/__pycache__/
+frontend/node_modules/
+frontend/dist/
+.vercel/
+*.pyc
+*.log

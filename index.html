@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>자산관리</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #21262d;
+  --border: #30363d;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --accent: #388bfd;
+  --accent-soft: #1f6feb;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --sidebar: 220px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;font-size:14px}
+
+/* ─── Sidebar ─── */
+.sidebar{width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0;position:fixed;height:100vh;z-index:100}
+.logo{padding:20px;border-bottom:1px solid var(--border)}
+.logo h1{font-size:16px;font-weight:700;color:var(--accent);letter-spacing:-0.3px}
+.logo p{font-size:11px;color:var(--muted);margin-top:3px}
+.nav-section{padding:12px 0}
+.nav-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:8px 16px 4px}
+.nav{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;color:var(--muted);font-size:13px;transition:.12s;border-left:2px solid transparent;border-radius:0 6px 6px 0;margin:1px 8px 1px 0}
+.nav:hover{background:var(--surface2);color:var(--text)}
+.nav.on{background:rgba(56,139,253,.12);color:var(--accent);border-left-color:var(--accent)}
+.nav-ic{width:20px;text-align:center;font-size:15px}
+
+/* ─── Main ─── */
+.main{margin-left:var(--sidebar);flex:1;padding:28px 32px;min-height:100vh}
+.page{display:none}.page.on{display:block}
+.ph{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
+.ph-left h2{font-size:20px;font-weight:700}
+.ph-left p{font-size:12px;color:var(--muted);margin-top:3px}
+
+/* ─── Cards ─── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px}
+.card-sm{padding:14px}
+.ct{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+.cv{font-size:26px;font-weight:700;line-height:1.1}
+.cv-sm{font-size:18px;font-weight:700}
+.cs{font-size:12px;color:var(--muted);margin-top:4px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.gc{display:grid;grid-template-columns:55% 1fr;gap:16px;margin-bottom:20px}
+
+/* ─── Accent borders ─── */
+.ab-blue{border-left:3px solid var(--accent)}
+.ab-green{border-left:3px solid var(--success)}
+.ab-orange{border-left:3px solid var(--warning)}
+.ab-red{border-left:3px solid var(--danger)}
+
+/* ─── Badges ─── */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:500}
+.bg-s{background:rgba(63,185,80,.15);color:var(--success)}
+.bg-w{background:rgba(210,153,34,.15);color:var(--warning)}
+.bg-d{background:rgba(248,81,73,.15);color:var(--danger)}
+.bg-b{background:rgba(56,139,253,.15);color:var(--accent)}
+
+/* ─── Buttons ─── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:.12s}
+.btn-p{background:var(--accent-soft);color:#fff}.btn-p:hover{background:var(--accent)}
+.btn-g{background:transparent;color:var(--muted);border:1px solid var(--border)}.btn-g:hover{background:var(--surface2);color:var(--text)}
+.btn-d{background:rgba(248,81,73,.12);color:var(--danger);border:1px solid rgba(248,81,73,.25)}.btn-d:hover{background:rgba(248,81,73,.2)}
+.btn-w{background:rgba(210,153,34,.12);color:var(--warning);border:1px solid rgba(210,153,34,.25)}.btn-w:hover{background:rgba(210,153,34,.2)}
+.btn-sm{padding:4px 10px;font-size:12px}
+
+/* ─── Table ─── */
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse}
+th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--border)}
+th{font-size:11px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.05em;background:var(--surface2)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+th.num{text-align:right}
+
+/* ─── Alert ─── */
+.alert{padding:11px 14px;border-radius:8px;font-size:13px;display:flex;align-items:flex-start;gap:10px;margin-bottom:14px}
+.al-w{background:rgba(210,153,34,.1);border:1px solid rgba(210,153,34,.3);color:var(--warning)}
+.al-d{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--danger)}
+.al-b{background:rgba(56,139,253,.1);border:1px solid rgba(56,139,253,.3);color:var(--accent)}
+.al-s{background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);color:var(--success)}
+
+/* ─── Modal ─── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:460px;max-width:92vw;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:18px}
+.fg{margin-bottom:14px}
+.fl{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+.fi{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 11px;color:var(--text);font-size:13px;outline:none;transition:border-color .12s}
+.fi:focus{border-color:var(--accent)}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.fa{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}
+
+/* ─── Charts ─── */
+.chart-box{position:relative;height:240px}
+.chart-box-lg{position:relative;height:280px}
+
+/* ─── FX bar ─── */
+.fx-bar{display:flex;align-items:center;gap:14px;background:var(--surface2);border-radius:8px;padding:8px 14px;font-size:12px;color:var(--muted);margin-bottom:18px;border:1px solid var(--border)}
+.fx-bar input{background:transparent;border:none;outline:none;color:var(--text);font-size:14px;font-weight:600;width:75px}
+
+/* ─── Misc ─── */
+.sec{margin-bottom:22px}
+.sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.st{font-size:15px;font-weight:600}
+.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty-ic{font-size:40px;margin-bottom:10px}
+.row-actions{display:flex;gap:6px}
+.txt-s{color:var(--success)}.txt-d{color:var(--danger)}.txt-w{color:var(--warning)}.txt-m{color:var(--muted)}
+.alloc-row{display:flex;align-items:center;gap:6px}
+.alloc-bar{width:80px;height:5px;background:var(--surface2);border-radius:999px;overflow:hidden;flex-shrink:0}
+.alloc-fill{height:100%;border-radius:999px}
+.pct-diff{font-weight:600;font-size:13px}
+.tgt-sum{font-size:12px;margin-top:8px;text-align:right;padding:6px 14px;color:var(--muted)}
+.tgt-sum span{font-weight:700;color:var(--text)}
+.chip{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:500;background:var(--surface2);color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══ -->
+<nav class="sidebar">
+  <div class="logo">
+    <h1>자산관리</h1>
+    <p id="sideDate"></p>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">메뉴</div>
+    <div class="nav on" onclick="go('dashboard')"><span class="nav-ic">▦</span> 대시보드</div>
+    <div class="nav" onclick="go('savings')"><span class="nav-ic">🏦</span> 적금</div>
+    <div class="nav" onclick="go('overseas')"><span class="nav-ic">🌐</span> 해외직투</div>
+    <div class="nav" onclick="go('isa')"><span class="nav-ic">📈</span> 키움 ISA</div>
+    <div class="nav" onclick="go('yearly')"><span class="nav-ic">📅</span> 연간기록</div>
+  </div>
+</nav>
+
+<!-- ═══ MAIN ═══ -->
+<main class="main">
+
+<!-- ── 대시보드 ── -->
+<div id="page-dashboard" class="page on">
+  <div class="ph">
+    <div class="ph-left">
+      <h2>대시보드</h2>
+      <p>전체 자산 현황</p>
+    </div>
+  </div>
+  <div class="g4" id="dash-stats"></div>
+  <div class="gc">
+    <div class="card sec">
+      <div class="sh"><div class="st">연도별 자산 추이</div></div>
+      <div class="chart-box-lg"><canvas id="chartYearly"></canvas></div>
+    </div>
+    <div class="card sec">
+      <div class="sh"><div class="st">자산 구성</div></div>
+      <div class="chart-box"><canvas id="chartPie"></canvas></div>
+    </div>
+  </div>
+  <div id="dash-rebal-alert"></div>
+</div>
+
+<!-- ── 적금 ── -->
+<div id="page-savings" class="page">
+  <div class="ph">
+    <div class="ph-left"><h2>적금</h2><p>적금·예금 계좌 관리</p></div>
+    <button class="btn btn-p" onclick="openModal('savings-modal')">+ 계좌 추가</button>
+  </div>
+  <div class="g3" id="savings-summary"></div>
+  <div class="sec">
+    <div class="tbl-wrap"><table id="savings-table">
+      <thead><tr>
+        <th>금융기관</th><th>계좌명</th><th class="num">원금</th><th class="num">현재잔액</th>
+        <th class="num">금리(%)</th><th>만기일</th><th>상태</th><th></th>
+      </tr></thead>
+      <tbody id="savings-body"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ── 해외직투 ── -->
+<div id="page-overseas" class="page">
+  <div class="ph">
+    <div class="ph-left"><h2>해외직투</h2><p>포트폴리오 관리 · 리밸런싱 모니터링</p></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-g" onclick="openModal('rebal-modal')">리밸런싱 기록</button>
+      <button class="btn btn-p" onclick="openModal('overseas-modal')">+ 종목 추가</button>
+    </div>
+  </div>
+  <div id="ov-alert"></div>
+  <div class="fx-bar">
+    <span>USD/KRW 환율</span>
+    <input type="number" id="fxInput" placeholder="1350" oninput="saveFx(this.value)">
+    <span>원</span>
+    <span style="margin-left:auto;font-size:11px">가격 업데이트 후 저장을 눌러주세요</span>
+  </div>
+  <div class="g3" id="ov-summary"></div>
+  <div class="sec">
+    <div class="sh">
+      <div class="st">포트폴리오 현황</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="tgt-sum-label" class="tgt-sum" style="margin:0"></span>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>티커</th><th>종목명</th><th class="num">수량</th><th class="num">현재가(USD)</th>
+          <th class="num">평가액(USD)</th><th class="num">평가액(KRW)</th>
+          <th class="num">목표%</th><th class="num">현재%</th><th class="num">차이</th>
+          <th>리밸런싱</th><th></th>
+        </tr></thead>
+        <tbody id="ov-body"></tbody>
+      </table>
+    </div>
+    <div id="rebal-action"></div>
+  </div>
+  <div class="sec">
+    <div class="sh"><div class="st">리밸런싱 이력</div></div>
+    <div id="rebal-history"></div>
+  </div>
+</div>
+
+<!-- ── 키움 ISA ── -->
+<div id="page-isa" class="page">
+  <div class="ph">
+    <div class="ph-left"><h2>키움 ISA</h2><p>ISA 계좌 현황</p></div>
+    <button class="btn btn-p" onclick="openModal('isa-modal')">+ 잔액 업데이트</button>
+  </div>
+  <div class="g3" id="isa-summary"></div>
+  <div class="sec">
+    <div class="sh"><div class="st">잔액 이력</div></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>기록일</th><th class="num">잔액</th><th class="num">증감</th><th>메모</th><th></th></tr></thead>
+      <tbody id="isa-body"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ── 연간기록 ── -->
+<div id="page-yearly" class="page">
+  <div class="ph">
+    <div class="ph-left"><h2>연간기록</h2><p>연도별 자산 스냅샷 · 성장률</p></div>
+    <button class="btn btn-p" onclick="openModal('yearly-modal')">+ 연도 추가</button>
+  </div>
+  <div class="sec">
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>연도</th><th class="num">적금</th><th class="num">해외직투(KRW)</th>
+        <th class="num">키움 ISA</th><th class="num">총 자산</th>
+        <th class="num">전년 대비 증감</th><th class="num">수익률</th><th>메모</th><th></th>
+      </tr></thead>
+      <tbody id="yearly-body"></tbody>
+    </table></div>
+  </div>
+</div>
+
+</main>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- 적금 추가/수정 -->
+<div class="overlay" id="savings-modal">
+<div class="modal">
+  <div class="modal-title" id="sm-title">적금 계좌 추가</div>
+  <input type="hidden" id="sm-id">
+  <div class="fr">
+    <div class="fg"><label class="fl">금융기관</label><input class="fi" id="sm-bank" placeholder="예) 카카오뱅크"></div>
+    <div class="fg"><label class="fl">계좌명</label><input class="fi" id="sm-name" placeholder="예) 자유적금"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label class="fl">원금 (원)</label><input class="fi" id="sm-principal" type="number" placeholder="0"></div>
+    <div class="fg"><label class="fl">현재잔액 (원)</label><input class="fi" id="sm-balance" type="number" placeholder="0"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label class="fl">연이율 (%)</label><input class="fi" id="sm-rate" type="number" step="0.01" placeholder="3.5"></div>
+    <div class="fg"><label class="fl">시작일</label><input class="fi" id="sm-start" type="date"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label class="fl">만기일</label><input class="fi" id="sm-maturity" type="date"></div>
+    <div class="fg"><label class="fl">상태</label>
+      <select class="fi" id="sm-status">
+        <option value="active">유지중</option>
+        <option value="matured">만기</option>
+        <option value="closed">해지</option>
+      </select>
+    </div>
+  </div>
+  <div class="fg"><label class="fl">메모</label><input class="fi" id="sm-note" placeholder="선택 입력"></div>
+  <div class="fa">
+    <button class="btn btn-g" onclick="closeModal('savings-modal')">취소</button>
+    <button class="btn btn-p" onclick="saveSavings()">저장</button>
+  </div>
+</div></div>
+
+<!-- 해외직투 종목 추가/수정 -->
+<div class="overlay" id="overseas-modal">
+<div class="modal">
+  <div class="modal-title" id="om-title">종목 추가</div>
+  <input type="hidden" id="om-id">
+  <div class="fr">
+    <div class="fg"><label class="fl">티커 (심볼)</label><input class="fi" id="om-ticker" placeholder="예) SPY"></div>
+    <div class="fg"><label class="fl">종목명</label><input class="fi" id="om-name" placeholder="예) S&P500 ETF"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label class="fl">보유 수량</label><input class="fi" id="om-shares" type="number" step="0.001" placeholder="0"></div>
+    <div class="fg"><label class="fl">현재가 (USD)</label><input class="fi" id="om-price" type="number" step="0.01" placeholder="0.00"></div>
+  </div>
+  <div class="fg"><label class="fl">목표 비중 (%)</label><input class="fi" id="om-target" type="number" step="0.1" placeholder="예) 30"></div>
+  <div class="fg"><label class="fl">메모</label><input class="fi" id="om-note" placeholder="선택 입력"></div>
+  <div class="fa">
+    <button class="btn btn-g" onclick="closeModal('overseas-modal')">취소</button>
+    <button class="btn btn-p" onclick="saveOverseas()">저장</button>
+  </div>
+</div></div>
+
+<!-- 리밸런싱 기록 -->
+<div class="overlay" id="rebal-modal">
+<div class="modal">
+  <div class="modal-title">리밸런싱 기록 추가</div>
+  <div class="fg"><label class="fl">날짜</label><input class="fi" id="rb-date" type="date"></div>
+  <div class="fg"><label class="fl">내용</label><textarea class="fi" id="rb-note" rows="3" placeholder="리밸런싱 내용을 입력하세요"></textarea></div>
+  <div class="fa">
+    <button class="btn btn-g" onclick="closeModal('rebal-modal')">취소</button>
+    <button class="btn btn-p" onclick="saveRebal()">저장</button>
+  </div>
+</div></div>
+
+<!-- ISA 업데이트 -->
+<div class="overlay" id="isa-modal">
+<div class="modal">
+  <div class="modal-title">ISA 잔액 업데이트</div>
+  <div class="fr">
+    <div class="fg"><label class="fl">기록일</label><input class="fi" id="im-date" type="date"></div>
+    <div class="fg"><label class="fl">잔액 (원)</label><input class="fi" id="im-value" type="number" placeholder="0"></div>
+  </div>
+  <div class="fg"><label class="fl">메모</label><input class="fi" id="im-note" placeholder="선택 입력"></div>
+  <div class="fa">
+    <button class="btn btn-g" onclick="closeModal('isa-modal')">취소</button>
+    <button class="btn btn-p" onclick="saveIsa()">저장</button>
+  </div>
+</div></div>
+
+<!-- 연간기록 추가 -->
+<div class="overlay" id="yearly-modal">
+<div class="modal">
+  <div class="modal-title" id="ym-title">연간 기록 추가</div>
+  <input type="hidden" id="ym-id">
+  <div class="fg"><label class="fl">연도</label><input class="fi" id="ym-year" type="number" placeholder="2024" min="2000" max="2100"></div>
+  <div class="fr">
+    <div class="fg"><label class="fl">적금 총액 (원)</label><input class="fi" id="ym-savings" type="number" placeholder="0"></div>
+    <div class="fg"><label class="fl">해외직투 (원)</label><input class="fi" id="ym-overseas" type="number" placeholder="0"></div>
+  </div>
+  <div class="fr">
+    <div class="fg"><label class="fl">ISA (원)</label><input class="fi" id="ym-isa" type="number" placeholder="0"></div>
+    <div class="fg"><label class="fl">기타 자산 (원)</label><input class="fi" id="ym-other" type="number" placeholder="0"></div>
+  </div>
+  <div class="fg"><label class="fl">메모</label><input class="fi" id="ym-note" placeholder="선택 입력"></div>
+  <div class="fa">
+    <button class="btn btn-g" onclick="closeModal('yearly-modal')">취소</button>
+    <button class="btn btn-p" onclick="saveYearly()">저장</button>
+  </div>
+</div></div>
+
+<script>
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+const STORAGE_KEY = 'asset_mgr_v1';
+
+function defaultState() {
+  return {
+    fx: 1350,
+    savings: [],
+    overseas: { holdings: [], rebalHistory: [] },
+    isa: { history: [] },
+    yearlyRecords: []
+  };
+}
+
+let S = loadState();
+let charts = {};
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return defaultState();
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(S));
+}
+
+// ═══════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════
+function go(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.nav').forEach(n => n.classList.remove('on'));
+  document.getElementById('page-' + page).classList.add('on');
+  document.querySelectorAll('.nav').forEach(n => {
+    if (n.textContent.trim().includes(navLabel(page))) n.classList.add('on');
+  });
+  renderPage(page);
+}
+
+function navLabel(p) {
+  return {dashboard:'대시보드',savings:'적금',overseas:'해외직투',isa:'키움',yearly:'연간'}[p] || '';
+}
+
+function renderPage(p) {
+  if (p === 'dashboard') renderDashboard();
+  if (p === 'savings') renderSavings();
+  if (p === 'overseas') renderOverseas();
+  if (p === 'isa') renderIsa();
+  if (p === 'yearly') renderYearly();
+}
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+const won = n => Math.round(n).toLocaleString('ko-KR') + '원';
+const wonNoUnit = n => Math.round(n).toLocaleString('ko-KR');
+const usd = n => '$' + Number(n).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2});
+const pct = n => (n >= 0 ? '+' : '') + Number(n).toFixed(2) + '%';
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+const today = () => new Date().toISOString().slice(0,10);
+
+function daysLeft(maturity) {
+  const diff = new Date(maturity) - new Date();
+  return Math.ceil(diff / 86400000);
+}
+
+function ovTotal() {
+  return S.overseas.holdings.reduce((s, h) => s + h.shares * h.price, 0);
+}
+
+function totalAssets() {
+  const savTotal = S.savings.reduce((s, a) => s + (a.balance || a.principal || 0), 0);
+  const ovKrw = ovTotal() * S.fx;
+  const isaVal = S.isa.history.length ? S.isa.history[S.isa.history.length-1].value : 0;
+  return { savTotal, ovKrw, isaVal, total: savTotal + ovKrw + isaVal };
+}
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+// ═══════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════
+function renderDashboard() {
+  const { savTotal, ovKrw, isaVal, total } = totalAssets();
+  const sorted = [...S.yearlyRecords].sort((a,b) => a.year - b.year);
+  const lastTwo = sorted.slice(-2);
+  let growthRate = null, growthAmt = null;
+  if (lastTwo.length === 2) {
+    growthAmt = lastTwo[1].total - lastTwo[0].total;
+    growthRate = lastTwo[0].total > 0 ? (growthAmt / lastTwo[0].total * 100) : null;
+  }
+
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="card ab-blue">
+      <div class="ct">총 자산</div>
+      <div class="cv">${wonNoUnit(total)}<small style="font-size:14px;font-weight:400">원</small></div>
+      <div class="cs">${new Date().toLocaleDateString('ko-KR')} 기준</div>
+    </div>
+    <div class="card ab-green">
+      <div class="ct">전년 대비 수익률</div>
+      <div class="cv ${growthRate >= 0 ? 'txt-s' : 'txt-d'}">${growthRate !== null ? pct(growthRate) : '—'}</div>
+      <div class="cs">${growthAmt !== null ? (growthAmt >= 0 ? '+' : '') + wonNoUnit(growthAmt) + '원' : '연간기록을 입력하세요'}</div>
+    </div>
+    <div class="card ab-orange">
+      <div class="ct">해외직투 (KRW)</div>
+      <div class="cv">${wonNoUnit(ovKrw)}<small style="font-size:14px;font-weight:400">원</small></div>
+      <div class="cs">${usd(ovTotal())} · 환율 ${S.fx.toLocaleString()}원</div>
+    </div>
+    <div class="card">
+      <div class="ct">적금 + ISA</div>
+      <div class="cv">${wonNoUnit(savTotal + isaVal)}<small style="font-size:14px;font-weight:400">원</small></div>
+      <div class="cs">적금 ${wonNoUnit(savTotal)} / ISA ${wonNoUnit(isaVal)}</div>
+    </div>`;
+
+  // Rebalancing alert on dashboard
+  const needsRebal = S.overseas.holdings.filter(h => {
+    const tot = ovTotal();
+    if (!tot) return false;
+    const cur = h.shares * h.price / tot * 100;
+    return Math.abs(cur - h.target) > 4;
+  });
+  const alertEl = document.getElementById('dash-rebal-alert');
+  alertEl.innerHTML = needsRebal.length > 0
+    ? `<div class="alert al-w">⚠️ 해외직투 리밸런싱 필요: ${needsRebal.map(h => h.ticker).join(', ')} 종목이 목표 비중에서 4% 이상 벗어났습니다. <a href="#" onclick="go('overseas');return false" style="color:inherit;font-weight:700;margin-left:6px">확인하기 →</a></div>`
+    : '';
+
+  // Yearly chart
+  destroyChart('yearly');
+  const ctx1 = document.getElementById('chartYearly').getContext('2d');
+  charts['yearly'] = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(r => r.year + '년'),
+      datasets: [
+        { label: '적금', data: sorted.map(r => r.savings||0), backgroundColor: 'rgba(56,139,253,.7)', borderRadius: 4, stack: 'a' },
+        { label: '해외직투', data: sorted.map(r => r.overseas||0), backgroundColor: 'rgba(63,185,80,.7)', borderRadius: 4, stack: 'a' },
+        { label: 'ISA', data: sorted.map(r => r.isa||0), backgroundColor: 'rgba(210,153,34,.7)', borderRadius: 4, stack: 'a' },
+        { label: '기타', data: sorted.map(r => r.other||0), backgroundColor: 'rgba(139,148,158,.5)', borderRadius: 4, stack: 'a' },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#8b949e', font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#8b949e' }, grid: { color: 'rgba(255,255,255,.04)' }, stacked: true },
+        y: { ticks: { color: '#8b949e', callback: v => (v/1e8).toFixed(0) + '억' }, grid: { color: 'rgba(255,255,255,.06)' }, stacked: true }
+      }
+    }
+  });
+
+  // Pie chart
+  destroyChart('pie');
+  const ctx2 = document.getElementById('chartPie').getContext('2d');
+  charts['pie'] = new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: ['적금', '해외직투', 'ISA'],
+      datasets: [{ data: [savTotal, ovKrw, isaVal],
+        backgroundColor: ['rgba(56,139,253,.8)','rgba(63,185,80,.8)','rgba(210,153,34,.8)'],
+        borderColor: '#161b22', borderWidth: 2 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      cutout: '65%',
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#8b949e', padding: 14, font: { size: 12 } } },
+        tooltip: { callbacks: { label: ctx => ` ${wonNoUnit(ctx.parsed)}원` } }
+      }
+    }
+  });
+}
+
+// ═══════════════════════════════════════
+// 적금
+// ═══════════════════════════════════════
+function renderSavings() {
+  const total = S.savings.reduce((s,a) => s + (a.balance||0), 0);
+  const principal = S.savings.reduce((s,a) => s + (a.principal||0), 0);
+  const interest = total - principal;
+  document.getElementById('savings-summary').innerHTML = `
+    <div class="card ab-blue">
+      <div class="ct">현재 잔액 합계</div>
+      <div class="cv-sm">${won(total)}</div>
+      <div class="cs">${S.savings.length}개 계좌</div>
+    </div>
+    <div class="card ab-green">
+      <div class="ct">납입 원금 합계</div>
+      <div class="cv-sm">${won(principal)}</div>
+    </div>
+    <div class="card ab-orange">
+      <div class="ct">이자 누적</div>
+      <div class="cv-sm txt-s">${won(interest)}</div>
+      <div class="cs">${principal > 0 ? ((interest/principal)*100).toFixed(2) + '% 수익' : '—'}</div>
+    </div>`;
+
+  const body = document.getElementById('savings-body');
+  if (!S.savings.length) {
+    body.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-ic">🏦</div><p>등록된 적금 계좌가 없습니다</p></div></td></tr>`;
+    return;
+  }
+  body.innerHTML = S.savings.map(a => {
+    const dl = a.maturity ? daysLeft(a.maturity) : null;
+    const statusBadge = a.status === 'active'
+      ? (dl !== null && dl <= 30 ? `<span class="badge bg-w">만기 D-${dl}</span>` : `<span class="badge bg-b">유지중</span>`)
+      : a.status === 'matured' ? `<span class="badge bg-s">만기</span>` : `<span class="badge bg-d">해지</span>`;
+    const gain = (a.balance||0) - (a.principal||0);
+    return `<tr>
+      <td>${a.bank||'—'}</td>
+      <td><strong>${a.name}</strong>${a.note ? `<br><small class="txt-m">${a.note}</small>` : ''}</td>
+      <td class="num">${won(a.principal||0)}</td>
+      <td class="num"><strong>${won(a.balance||0)}</strong>${gain ? `<br><small class="${gain>=0?'txt-s':'txt-d'}">${gain>=0?'+':''}${won(gain)}</small>` : ''}</td>
+      <td class="num">${a.rate ? a.rate + '%' : '—'}</td>
+      <td>${a.maturity||'—'}</td>
+      <td>${statusBadge}</td>
+      <td><div class="row-actions">
+        <button class="btn btn-g btn-sm" onclick="editSavings('${a.id}')">수정</button>
+        <button class="btn btn-d btn-sm" onclick="deleteSavings('${a.id}')">삭제</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function openSavingsModal(data = null) {
+  document.getElementById('sm-title').textContent = data ? '적금 계좌 수정' : '적금 계좌 추가';
+  document.getElementById('sm-id').value = data?.id || '';
+  document.getElementById('sm-bank').value = data?.bank || '';
+  document.getElementById('sm-name').value = data?.name || '';
+  document.getElementById('sm-principal').value = data?.principal || '';
+  document.getElementById('sm-balance').value = data?.balance || '';
+  document.getElementById('sm-rate').value = data?.rate || '';
+  document.getElementById('sm-start').value = data?.start || '';
+  document.getElementById('sm-maturity').value = data?.maturity || '';
+  document.getElementById('sm-status').value = data?.status || 'active';
+  document.getElementById('sm-note').value = data?.note || '';
+  openModal('savings-modal');
+}
+
+function saveSavings() {
+  const id = document.getElementById('sm-id').value;
+  const rec = {
+    id: id || uid(),
+    bank: document.getElementById('sm-bank').value.trim(),
+    name: document.getElementById('sm-name').value.trim(),
+    principal: +document.getElementById('sm-principal').value || 0,
+    balance: +document.getElementById('sm-balance').value || 0,
+    rate: +document.getElementById('sm-rate').value || 0,
+    start: document.getElementById('sm-start').value,
+    maturity: document.getElementById('sm-maturity').value,
+    status: document.getElementById('sm-status').value,
+    note: document.getElementById('sm-note').value.trim(),
+  };
+  if (!rec.name) { alert('계좌명을 입력하세요'); return; }
+  if (id) {
+    const idx = S.savings.findIndex(a => a.id === id);
+    if (idx >= 0) S.savings[idx] = rec;
+  } else {
+    S.savings.push(rec);
+  }
+  save(); closeModal('savings-modal'); renderSavings();
+}
+
+function editSavings(id) { openSavingsModal(S.savings.find(a => a.id === id)); }
+function deleteSavings(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  S.savings = S.savings.filter(a => a.id !== id);
+  save(); renderSavings();
+}
+
+// ═══════════════════════════════════════
+// 해외직투
+// ═══════════════════════════════════════
+function renderOverseas() {
+  document.getElementById('fxInput').value = S.fx;
+
+  const total = ovTotal();
+  const totalKrw = total * S.fx;
+  const holdings = S.overseas.holdings;
+  const tgtSum = holdings.reduce((s, h) => s + h.target, 0);
+
+  // Alerts
+  const needsRebal = holdings.filter(h => {
+    if (!total) return false;
+    return Math.abs((h.shares * h.price / total * 100) - h.target) > 4;
+  });
+  const alertEl = document.getElementById('ov-alert');
+  if (needsRebal.length) {
+    alertEl.innerHTML = `<div class="alert al-d">⚠️ <div><strong>리밸런싱 필요</strong> — ${needsRebal.map(h=>`<strong>${h.ticker}</strong>`).join(', ')} 종목이 목표 비중에서 4% 이상 이탈했습니다.</div></div>`;
+  } else if (holdings.length) {
+    alertEl.innerHTML = `<div class="alert al-s">✓ 모든 종목이 목표 비중 ±4% 이내에 있습니다.</div>`;
+  } else {
+    alertEl.innerHTML = '';
+  }
+
+  // Summary
+  document.getElementById('ov-summary').innerHTML = `
+    <div class="card ab-blue">
+      <div class="ct">포트폴리오 총액 (USD)</div>
+      <div class="cv-sm">${usd(total)}</div>
+      <div class="cs">${holdings.length}개 종목</div>
+    </div>
+    <div class="card ab-green">
+      <div class="ct">포트폴리오 총액 (KRW)</div>
+      <div class="cv-sm">${won(totalKrw)}</div>
+      <div class="cs">환율 ${S.fx.toLocaleString()}원 기준</div>
+    </div>
+    <div class="card ${Math.abs(tgtSum-100) < 0.01 ? 'ab-green' : 'ab-orange'}">
+      <div class="ct">목표 비중 합계</div>
+      <div class="cv-sm ${Math.abs(tgtSum-100) < 0.01 ? 'txt-s' : 'txt-w'}">${tgtSum.toFixed(1)}%</div>
+      <div class="cs">${Math.abs(tgtSum-100) < 0.01 ? '정상' : '합계가 100%가 아닙니다'}</div>
+    </div>`;
+
+  document.getElementById('tgt-sum-label').textContent = '';
+
+  // Body
+  const body = document.getElementById('ov-body');
+  if (!holdings.length) {
+    body.innerHTML = `<tr><td colspan="11"><div class="empty"><div class="empty-ic">🌐</div><p>등록된 종목이 없습니다</p></div></td></tr>`;
+    document.getElementById('rebal-action').innerHTML = '';
+    renderRebalHistory(); return;
+  }
+
+  let rebalRows = [];
+  body.innerHTML = holdings.map(h => {
+    const val = h.shares * h.price;
+    const valKrw = val * S.fx;
+    const curPct = total > 0 ? val / total * 100 : 0;
+    const diff = curPct - h.target;
+    const absDiff = Math.abs(diff);
+    const needsR = absDiff > 4;
+    const diffColor = absDiff > 4 ? 'txt-d' : absDiff > 2 ? 'txt-w' : 'txt-s';
+    const barColor = absDiff > 4 ? '#f85149' : absDiff > 2 ? '#d29922' : '#3fb950';
+
+    // Rebalancing: how much to trade in USD
+    const idealVal = h.target / 100 * total;
+    const tradeUsd = idealVal - val;
+    const tradeShares = h.price > 0 ? tradeUsd / h.price : 0;
+    if (needsR) rebalRows.push({ ticker: h.ticker, tradeUsd, tradeShares, price: h.price });
+
+    const fillW = Math.min(curPct / Math.max(h.target * 1.5, 1) * 100, 100);
+    return `<tr>
+      <td><strong>${h.ticker}</strong></td>
+      <td>${h.name||'—'}</td>
+      <td class="num">${h.shares}</td>
+      <td class="num">${usd(h.price)}</td>
+      <td class="num">${usd(val)}</td>
+      <td class="num">${won(valKrw)}</td>
+      <td class="num txt-m">${h.target.toFixed(1)}%</td>
+      <td class="num">${curPct.toFixed(1)}%</td>
+      <td class="num">
+        <div class="alloc-row">
+          <span class="pct-diff ${diffColor}">${diff>=0?'+':''}${diff.toFixed(1)}%</span>
+          <div class="alloc-bar"><div class="alloc-fill" style="width:${fillW}%;background:${barColor}"></div></div>
+        </div>
+      </td>
+      <td>${needsR ? `<span class="badge bg-d">리밸런싱 필요</span>` : `<span class="badge bg-s">정상</span>`}</td>
+      <td><div class="row-actions">
+        <button class="btn btn-g btn-sm" onclick="editOverseas('${h.id}')">수정</button>
+        <button class="btn btn-d btn-sm" onclick="deleteOverseas('${h.id}')">삭제</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+
+  // Rebalancing action table
+  const ra = document.getElementById('rebal-action');
+  if (rebalRows.length) {
+    ra.innerHTML = `<div class="card" style="margin-top:14px;border-color:rgba(248,81,73,.3)">
+      <div class="sh"><div class="st txt-d">리밸런싱 필요 종목 — 조치 가이드</div></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>티커</th><th class="num">현재가</th><th class="num">거래금액(USD)</th><th class="num">거래수량(주)</th><th>액션</th></tr></thead>
+        <tbody>${rebalRows.map(r => `<tr>
+          <td><strong>${r.ticker}</strong></td>
+          <td class="num">${usd(r.price)}</td>
+          <td class="num ${r.tradeUsd>=0?'txt-s':'txt-d'}">${r.tradeUsd>=0?'+':''}${usd(Math.abs(r.tradeUsd))}</td>
+          <td class="num ${r.tradeShares>=0?'txt-s':'txt-d'}">${r.tradeShares>=0?'+':''}${r.tradeShares.toFixed(3)}주</td>
+          <td><span class="badge ${r.tradeUsd>=0?'bg-s':'bg-d'}">${r.tradeUsd>=0?'매수':'매도'}</span></td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+      <p style="font-size:11px;color:var(--muted);margin-top:10px">※ 목표 비중으로 돌아가기 위한 이론적 거래량입니다. 실제 거래 시 수수료·세금을 고려하세요.</p>
+    </div>`;
+  } else {
+    ra.innerHTML = '';
+  }
+
+  renderRebalHistory();
+}
+
+function renderRebalHistory() {
+  const hist = document.getElementById('rebal-history');
+  const h = S.overseas.rebalHistory;
+  if (!h.length) {
+    hist.innerHTML = `<div class="empty"><p>리밸런싱 이력이 없습니다</p></div>`;
+    return;
+  }
+  hist.innerHTML = `<div class="tbl-wrap"><table>
+    <thead><tr><th>날짜</th><th>내용</th><th></th></tr></thead>
+    <tbody>${[...h].reverse().map(r => `<tr>
+      <td>${r.date}</td><td>${r.note||'—'}</td>
+      <td><button class="btn btn-d btn-sm" onclick="deleteRebal('${r.id}')">삭제</button></td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function saveFx(val) { S.fx = +val || 1350; save(); }
+
+function openOverseasModal(data = null) {
+  document.getElementById('om-title').textContent = data ? '종목 수정' : '종목 추가';
+  document.getElementById('om-id').value = data?.id || '';
+  document.getElementById('om-ticker').value = data?.ticker || '';
+  document.getElementById('om-name').value = data?.name || '';
+  document.getElementById('om-shares').value = data?.shares || '';
+  document.getElementById('om-price').value = data?.price || '';
+  document.getElementById('om-target').value = data?.target || '';
+  document.getElementById('om-note').value = data?.note || '';
+  openModal('overseas-modal');
+}
+
+function saveOverseas() {
+  const id = document.getElementById('om-id').value;
+  const rec = {
+    id: id || uid(),
+    ticker: document.getElementById('om-ticker').value.trim().toUpperCase(),
+    name: document.getElementById('om-name').value.trim(),
+    shares: +document.getElementById('om-shares').value || 0,
+    price: +document.getElementById('om-price').value || 0,
+    target: +document.getElementById('om-target').value || 0,
+    note: document.getElementById('om-note').value.trim(),
+  };
+  if (!rec.ticker) { alert('티커를 입력하세요'); return; }
+  if (id) {
+    const idx = S.overseas.holdings.findIndex(h => h.id === id);
+    if (idx >= 0) S.overseas.holdings[idx] = rec;
+  } else {
+    S.overseas.holdings.push(rec);
+  }
+  save(); closeModal('overseas-modal'); renderOverseas();
+}
+
+function editOverseas(id) { openOverseasModal(S.overseas.holdings.find(h => h.id === id)); }
+function deleteOverseas(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  S.overseas.holdings = S.overseas.holdings.filter(h => h.id !== id);
+  save(); renderOverseas();
+}
+
+function saveRebal() {
+  const rec = {
+    id: uid(),
+    date: document.getElementById('rb-date').value || today(),
+    note: document.getElementById('rb-note').value.trim()
+  };
+  S.overseas.rebalHistory.push(rec);
+  save(); closeModal('rebal-modal'); renderRebalHistory();
+}
+
+function deleteRebal(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  S.overseas.rebalHistory = S.overseas.rebalHistory.filter(r => r.id !== id);
+  save(); renderRebalHistory();
+}
+
+// ═══════════════════════════════════════
+// ISA
+// ═══════════════════════════════════════
+function renderIsa() {
+  const hist = S.isa.history;
+  const latest = hist.length ? hist[hist.length-1].value : 0;
+  const prev = hist.length > 1 ? hist[hist.length-2].value : null;
+  const change = prev !== null ? latest - prev : null;
+
+  document.getElementById('isa-summary').innerHTML = `
+    <div class="card ab-blue">
+      <div class="ct">현재 잔액</div>
+      <div class="cv-sm">${won(latest)}</div>
+      <div class="cs">${hist.length ? hist[hist.length-1].date : '—'}</div>
+    </div>
+    <div class="card ab-green">
+      <div class="ct">전회 대비 증감</div>
+      <div class="cv-sm ${change === null ? '' : change >= 0 ? 'txt-s' : 'txt-d'}">${change !== null ? (change>=0?'+':'')+won(change) : '—'}</div>
+    </div>
+    <div class="card">
+      <div class="ct">기록 횟수</div>
+      <div class="cv-sm">${hist.length}회</div>
+    </div>`;
+
+  const body = document.getElementById('isa-body');
+  if (!hist.length) {
+    body.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-ic">📈</div><p>기록된 잔액이 없습니다</p></div></td></tr>`;
+    return;
+  }
+  body.innerHTML = [...hist].reverse().map((r, i, arr) => {
+    const prev2 = arr[i+1];
+    const chg = prev2 ? r.value - prev2.value : null;
+    return `<tr>
+      <td>${r.date}</td>
+      <td class="num"><strong>${won(r.value)}</strong></td>
+      <td class="num">${chg !== null ? `<span class="${chg>=0?'txt-s':'txt-d'}">${chg>=0?'+':''}${won(chg)}</span>` : '—'}</td>
+      <td>${r.note||'—'}</td>
+      <td><button class="btn btn-d btn-sm" onclick="deleteIsa('${r.id}')">삭제</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function saveIsa() {
+  const rec = {
+    id: uid(),
+    date: document.getElementById('im-date').value || today(),
+    value: +document.getElementById('im-value').value || 0,
+    note: document.getElementById('im-note').value.trim()
+  };
+  if (!rec.value) { alert('잔액을 입력하세요'); return; }
+  S.isa.history.push(rec);
+  S.isa.history.sort((a,b) => a.date.localeCompare(b.date));
+  save(); closeModal('isa-modal'); renderIsa();
+}
+
+function deleteIsa(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  S.isa.history = S.isa.history.filter(r => r.id !== id);
+  save(); renderIsa();
+}
+
+// ═══════════════════════════════════════
+// 연간기록
+// ═══════════════════════════════════════
+function renderYearly() {
+  const sorted = [...S.yearlyRecords].sort((a,b) => a.year - b.year);
+  const body = document.getElementById('yearly-body');
+  if (!sorted.length) {
+    body.innerHTML = `<tr><td colspan="9"><div class="empty"><div class="empty-ic">📅</div><p>연간 기록을 추가하세요</p></div></td></tr>`;
+    return;
+  }
+  body.innerHTML = sorted.map((r, i) => {
+    const prev = i > 0 ? sorted[i-1] : null;
+    const changeAmt = prev ? r.total - prev.total : null;
+    const changeRate = prev && prev.total > 0 ? (r.total - prev.total) / prev.total * 100 : null;
+    return `<tr>
+      <td><strong>${r.year}</strong></td>
+      <td class="num">${won(r.savings||0)}</td>
+      <td class="num">${won(r.overseas||0)}</td>
+      <td class="num">${won(r.isa||0)}</td>
+      <td class="num"><strong>${won(r.total)}</strong></td>
+      <td class="num">${changeAmt !== null ? `<span class="${changeAmt>=0?'txt-s':'txt-d'}">${changeAmt>=0?'+':''}${won(changeAmt)}</span>` : '—'}</td>
+      <td class="num">${changeRate !== null ? `<span class="badge ${changeRate>=0?'bg-s':'bg-d'}">${pct(changeRate)}</span>` : '—'}</td>
+      <td>${r.note||'—'}</td>
+      <td><div class="row-actions">
+        <button class="btn btn-g btn-sm" onclick="editYearly('${r.id}')">수정</button>
+        <button class="btn btn-d btn-sm" onclick="deleteYearly('${r.id}')">삭제</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function openYearlyModal(data = null) {
+  document.getElementById('ym-title').textContent = data ? '연간기록 수정' : '연간기록 추가';
+  document.getElementById('ym-id').value = data?.id || '';
+  document.getElementById('ym-year').value = data?.year || new Date().getFullYear();
+  document.getElementById('ym-savings').value = data?.savings || '';
+  document.getElementById('ym-overseas').value = data?.overseas || '';
+  document.getElementById('ym-isa').value = data?.isa || '';
+  document.getElementById('ym-other').value = data?.other || '';
+  document.getElementById('ym-note').value = data?.note || '';
+  openModal('yearly-modal');
+}
+
+function saveYearly() {
+  const id = document.getElementById('ym-id').value;
+  const savings = +document.getElementById('ym-savings').value || 0;
+  const overseas = +document.getElementById('ym-overseas').value || 0;
+  const isa = +document.getElementById('ym-isa').value || 0;
+  const other = +document.getElementById('ym-other').value || 0;
+  const rec = {
+    id: id || uid(),
+    year: +document.getElementById('ym-year').value,
+    savings, overseas, isa, other,
+    total: savings + overseas + isa + other,
+    note: document.getElementById('ym-note').value.trim()
+  };
+  if (!rec.year) { alert('연도를 입력하세요'); return; }
+  if (id) {
+    const idx = S.yearlyRecords.findIndex(r => r.id === id);
+    if (idx >= 0) S.yearlyRecords[idx] = rec;
+  } else {
+    S.yearlyRecords.push(rec);
+  }
+  save(); closeModal('yearly-modal'); renderYearly();
+}
+
+function editYearly(id) { openYearlyModal(S.yearlyRecords.find(r => r.id === id)); }
+function deleteYearly(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  S.yearlyRecords = S.yearlyRecords.filter(r => r.id !== id);
+  save(); renderYearly();
+}
+
+// ═══════════════════════════════════════
+// MODAL HELPERS
+// ═══════════════════════════════════════
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  // Set today's date for date fields
+  const dateField = document.querySelector(`#${id} input[type=date]:not([value])`);
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// Close modal on overlay click
+document.querySelectorAll('.overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) closeModal(el.id); });
+});
+
+// Wire up modal open buttons that need custom logic
+document.getElementById('savings-modal').addEventListener('click', ()=>{});
+window.openModal = function(id) {
+  document.getElementById(id).classList.add('open');
+  // Pre-fill date inputs if empty
+  const di = document.querySelector(`#${id} input[type=date]`);
+  if (di && !di.value) di.value = today();
+};
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+document.getElementById('sideDate').textContent = new Date().toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
+
+// Patch overseas modal to use correct open function
+document.querySelector('.nav[onclick="go(\'overseas\')"]');
+
+renderDashboard();
+</script>
+</body>
+</html>

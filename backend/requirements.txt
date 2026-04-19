@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+httpx
+yfinance
+psycopg[binary]
