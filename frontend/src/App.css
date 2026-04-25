@@ -445,6 +445,56 @@ tr:hover td { background: var(--surface2); }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
 
+.asset-rate-mobile {
+  display: none;
+}
+
+.asset-rate-card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  padding: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.asset-rate-card + .asset-rate-card {
+  margin-top: 10px;
+}
+
+.asset-rate-card-head,
+.asset-rate-card-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 12px;
+  align-items: center;
+}
+
+.asset-rate-card-head {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.asset-rate-card-head strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.asset-rate-card-grid span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.asset-rate-card-grid b {
+  font-size: 13px;
+  text-align: right;
+}
+
+.asset-rate-total {
+  border-color: var(--accent);
+}
+
 /* ─── Alerts ──────────────────────────────────────────────────────────────── */
 .alert {
   padding: 12px 16px;
@@ -878,6 +928,14 @@ tr:hover td { background: var(--surface2); }
   .alert {
     font-size: 12.5px;
     flex-wrap: wrap;
+  }
+
+  .asset-rate-mobile {
+    display: block;
+  }
+
+  .table-mobile-cards {
+    display: none;
   }
 
   /* ── 모바일 카드형 테이블 ──────────────────────────────────── */

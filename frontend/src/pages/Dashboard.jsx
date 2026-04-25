@@ -275,6 +275,44 @@ export default function Dashboard({ onNavigate }) {
           </div>
         ) : (
           <>
+            <div className="asset-rate-mobile">
+              {catRows.map(r => (
+                <div className="asset-rate-card" key={r.key}>
+                  <div className="asset-rate-card-head">
+                    <strong><span>{r.icon}</span>{r.label}</strong>
+                    <RateBadge rate={r.chgRate} />
+                  </div>
+                  <div className="asset-rate-card-grid">
+                    <span>기준</span><b>{r.base !== null ? shortWon(r.base) : '—'}</b>
+                    <span>현재</span><b>{shortWon(r.cur)}</b>
+                    <span>증감</span>
+                    <b className={r.change >= 0 ? 'txt-s' : 'txt-d'}>
+                      {r.change !== null ? `${r.change >= 0 ? '+' : ''}${shortWon(r.change)}` : '—'}
+                    </b>
+                    <span>추가투자</span><b>{r.inv > 0 ? shortWon(r.inv) : '—'}</b>
+                    <span>순수 수익률</span>
+                    <b>{r.inv > 0 ? <RateBadge rate={r.pureRate} /> : <span className="txt-m">=</span>}</b>
+                  </div>
+                </div>
+              ))}
+              <div className="asset-rate-card asset-rate-total">
+                <div className="asset-rate-card-head">
+                  <strong>합계</strong>
+                  <RateBadge rate={totChgRate} />
+                </div>
+                <div className="asset-rate-card-grid">
+                  <span>기준</span><b>{totBase !== null ? shortWon(totBase) : '—'}</b>
+                  <span>현재</span><b>{shortWon(total)}</b>
+                  <span>증감</span>
+                  <b className={totChange >= 0 ? 'txt-s' : 'txt-d'}>
+                    {totChange !== null ? `${totChange >= 0 ? '+' : ''}${shortWon(totChange)}` : '—'}
+                  </b>
+                  <span>추가투자</span><b>{totInv > 0 ? shortWon(totInv) : '—'}</b>
+                  <span>순수 수익률</span>
+                  <b>{totInv > 0 ? <RateBadge rate={totPureRate} /> : <span className="txt-m">=</span>}</b>
+                </div>
+              </div>
+            </div>
             <div className="table-mobile-cards">
             <div className="table-wrap">
               <table>
