@@ -71,11 +71,28 @@ def main():
             if not exists:
                 continue
 
+            remote_columns = {
+                row[0]
+                for row in conn.execute(
+                    text(
+                        "select column_name from information_schema.columns "
+                        "where table_schema='public' and table_name=:table"
+                    ),
+                    {"table": table},
+                )
+            }
+            local_columns = [
+                row["name"]
+                for row in sqlite.execute(f"pragma table_info({table})").fetchall()
+            ]
+            columns = [col for col in local_columns if col in remote_columns]
+            if not columns:
+                continue
+
             rows = [dict(row) for row in sqlite.execute(f"select * from {table}").fetchall()]
             if not rows:
                 continue
 
-            columns = rows[0].keys()
             col_sql = ", ".join(columns)
             val_sql = ", ".join(f":{col}" for col in columns)
             update_sql = ", ".join(f"{col}=excluded.{col}" for col in columns if col != "id")
@@ -84,7 +101,7 @@ def main():
                 f"insert into {table} ({col_sql}) values ({val_sql}) "
                 f"on conflict ({pk}) do update set {update_sql}"
             )
-            conn.execute(stmt, rows)
+            conn.execute(stmt, [{col: row[col] for col in columns} for row in rows])
             print(f"{table}: {len(rows)} rows copied")
 
 
