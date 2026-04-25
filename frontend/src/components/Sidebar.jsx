@@ -7,6 +7,7 @@ const MENU = [
   { id: 'isa',       icon: '📈', label: '키움 ISA' },
   { id: 'crypto',    icon: '₿',  label: '코인' },
   { id: 'realestate',icon: '🏠', label: '부동산' },
+  { id: 'monthly',   icon: '🗓', label: '월간기록' },
   { id: 'yearly',    icon: '📅', label: '연간기록' },
 ]
 

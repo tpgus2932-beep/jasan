@@ -7,3 +7,4 @@ frontend/dist/
 .vercel/
 *.pyc
 *.log
+*.db.bak-*

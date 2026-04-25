@@ -879,6 +879,47 @@ tr:hover td { background: var(--surface2); }
     font-size: 12.5px;
     flex-wrap: wrap;
   }
+
+  /* ── 모바일 카드형 테이블 ──────────────────────────────────── */
+  .table-mobile-cards .table-wrap { overflow-x: visible; }
+  .table-mobile-cards table { display: block; }
+  .table-mobile-cards thead { display: none; }
+  .table-mobile-cards tbody { display: block; }
+  .table-mobile-cards tbody tr {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    box-shadow: var(--shadow-card);
+  }
+  .table-mobile-cards tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    border: none;
+    font-size: 13px;
+    white-space: normal;
+  }
+  .table-mobile-cards tbody td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 400;
+    flex-shrink: 0;
+    margin-right: 8px;
+  }
+  .table-mobile-cards tbody td:first-child {
+    font-size: 14px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-soft);
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+  }
+  .table-mobile-cards tbody td:first-child::before { display: none; }
+  .table-mobile-cards tbody td[data-label=""] { display: none; }
 }
 
 @media (max-width: 480px) {

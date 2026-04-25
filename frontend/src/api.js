@@ -105,3 +105,10 @@ export const getYearly = () => isRemoteReadonly ? readTable('yearly_records', 'y
 export const createYearly = (data) => isRemoteReadonly ? readonlyReject() : api.post('/yearly', data).then(r => r.data)
 export const updateYearly = (id, data) => isRemoteReadonly ? readonlyReject() : api.put(`/yearly/${id}`, data).then(r => r.data)
 export const deleteYearly = (id) => isRemoteReadonly ? readonlyReject() : api.delete(`/yearly/${id}`)
+
+export const migrateYearlyToMonthly = () => isRemoteReadonly ? readonlyReject() : api.post('/migrate/yearly-to-monthly').then(r => r.data)
+
+export const getMonthly = () => isRemoteReadonly ? readTable('monthly_records', 'year_month.asc') : api.get('/monthly').then(r => r.data)
+export const createMonthly = (data) => isRemoteReadonly ? readonlyReject() : api.post('/monthly', data).then(r => r.data)
+export const updateMonthly = (id, data) => isRemoteReadonly ? readonlyReject() : api.put(`/monthly/${id}`, data).then(r => r.data)
+export const deleteMonthly = (id) => isRemoteReadonly ? readonlyReject() : api.delete(`/monthly/${id}`)

@@ -98,8 +98,37 @@ create table if not exists yearly_records (
   real_estate double precision default 0,
   other double precision default 0,
   total double precision default 0,
+  inv_savings double precision default 0,
+  inv_overseas double precision default 0,
+  inv_isa double precision default 0,
+  inv_crypto double precision default 0,
+  inv_real_estate double precision default 0,
   note text default ''
 );
+
+create table if not exists monthly_records (
+  id text primary key,
+  year_month text not null unique,
+  savings double precision default 0,
+  overseas double precision default 0,
+  isa double precision default 0,
+  crypto double precision default 0,
+  real_estate double precision default 0,
+  other double precision default 0,
+  total double precision default 0,
+  inv_savings double precision default 0,
+  inv_overseas double precision default 0,
+  inv_isa double precision default 0,
+  inv_crypto double precision default 0,
+  inv_real_estate double precision default 0,
+  note text default ''
+);
+
+alter table yearly_records add column if not exists inv_savings double precision default 0;
+alter table yearly_records add column if not exists inv_overseas double precision default 0;
+alter table yearly_records add column if not exists inv_isa double precision default 0;
+alter table yearly_records add column if not exists inv_crypto double precision default 0;
+alter table yearly_records add column if not exists inv_real_estate double precision default 0;
 
 alter table settings enable row level security;
 alter table savings enable row level security;
@@ -111,6 +140,7 @@ alter table crypto_holdings enable row level security;
 alter table crypto_history enable row level security;
 alter table real_estate enable row level security;
 alter table yearly_records enable row level security;
+alter table monthly_records enable row level security;
 
 drop policy if exists "read settings" on settings;
 drop policy if exists "read savings" on savings;
@@ -122,6 +152,7 @@ drop policy if exists "read crypto_holdings" on crypto_holdings;
 drop policy if exists "read crypto_history" on crypto_history;
 drop policy if exists "read real_estate" on real_estate;
 drop policy if exists "read yearly_records" on yearly_records;
+drop policy if exists "read monthly_records" on monthly_records;
 
 create policy "read settings" on settings for select using (auth.role() = 'authenticated');
 create policy "read savings" on savings for select using (auth.role() = 'authenticated');
@@ -133,3 +164,4 @@ create policy "read crypto_holdings" on crypto_holdings for select using (auth.r
 create policy "read crypto_history" on crypto_history for select using (auth.role() = 'authenticated');
 create policy "read real_estate" on real_estate for select using (auth.role() = 'authenticated');
 create policy "read yearly_records" on yearly_records for select using (auth.role() = 'authenticated');
+create policy "read monthly_records" on monthly_records for select using (auth.role() = 'authenticated');

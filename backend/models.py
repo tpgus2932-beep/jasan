@@ -120,4 +120,28 @@ class YearlyRecord(Base):
     real_estate = Column(Float, default=0)          # 부동산 순자산 (자산 - 부채)
     other = Column(Float, default=0)
     total = Column(Float, default=0)
+    inv_savings     = Column(Float, default=0)      # 카테고리별 추가 투자금
+    inv_overseas    = Column(Float, default=0)
+    inv_isa         = Column(Float, default=0)
+    inv_crypto      = Column(Float, default=0)
+    inv_real_estate = Column(Float, default=0)
+    note = Column(Text, default="")
+
+
+class MonthlyRecord(Base):
+    __tablename__ = "monthly_records"
+    id = Column(String, primary_key=True, default=new_id)
+    year_month = Column(String, nullable=False, unique=True)  # "2024-01"
+    savings = Column(Float, default=0)
+    overseas = Column(Float, default=0)
+    isa = Column(Float, default=0)
+    crypto = Column(Float, default=0)
+    real_estate = Column(Float, default=0)
+    other = Column(Float, default=0)
+    total = Column(Float, default=0)
+    inv_savings     = Column(Float, default=0)      # 카테고리별 추가 투자금
+    inv_overseas    = Column(Float, default=0)
+    inv_isa         = Column(Float, default=0)
+    inv_crypto      = Column(Float, default=0)
+    inv_real_estate = Column(Float, default=0)
     note = Column(Text, default="")

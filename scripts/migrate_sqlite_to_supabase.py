@@ -21,6 +21,7 @@ TABLES = [
     "crypto_history",
     "real_estate",
     "yearly_records",
+    "monthly_records",
 ]
 
 

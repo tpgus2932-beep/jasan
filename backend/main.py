@@ -41,6 +41,17 @@ def migrate():
         "ALTER TABLE savings ADD COLUMN last_paid_month TEXT DEFAULT ''",
         "ALTER TABLE overseas_holdings ADD COLUMN owner TEXT DEFAULT 'me'",
         "ALTER TABLE yearly_records ADD COLUMN crypto REAL DEFAULT 0",
+        "ALTER TABLE yearly_records ADD COLUMN inv_savings REAL DEFAULT 0",
+        "ALTER TABLE yearly_records ADD COLUMN inv_overseas REAL DEFAULT 0",
+        "ALTER TABLE yearly_records ADD COLUMN inv_isa REAL DEFAULT 0",
+        "ALTER TABLE yearly_records ADD COLUMN inv_crypto REAL DEFAULT 0",
+        "ALTER TABLE yearly_records ADD COLUMN inv_real_estate REAL DEFAULT 0",
+        "CREATE TABLE IF NOT EXISTS monthly_records (id TEXT PRIMARY KEY, year_month TEXT UNIQUE NOT NULL, savings REAL DEFAULT 0, overseas REAL DEFAULT 0, isa REAL DEFAULT 0, crypto REAL DEFAULT 0, real_estate REAL DEFAULT 0, other REAL DEFAULT 0, total REAL DEFAULT 0, inv_savings REAL DEFAULT 0, inv_overseas REAL DEFAULT 0, inv_isa REAL DEFAULT 0, inv_crypto REAL DEFAULT 0, inv_real_estate REAL DEFAULT 0, note TEXT DEFAULT '')",
+        "ALTER TABLE monthly_records ADD COLUMN inv_savings REAL DEFAULT 0",
+        "ALTER TABLE monthly_records ADD COLUMN inv_overseas REAL DEFAULT 0",
+        "ALTER TABLE monthly_records ADD COLUMN inv_isa REAL DEFAULT 0",
+        "ALTER TABLE monthly_records ADD COLUMN inv_crypto REAL DEFAULT 0",
+        "ALTER TABLE monthly_records ADD COLUMN inv_real_estate REAL DEFAULT 0",
     ]
     with engine.connect() as conn:
         for sql in migrations:
@@ -116,6 +127,26 @@ class YearlyBody(BaseModel):
     crypto: Optional[float] = 0
     real_estate: Optional[float] = 0
     other: Optional[float] = 0
+    inv_savings: Optional[float] = 0
+    inv_overseas: Optional[float] = 0
+    inv_isa: Optional[float] = 0
+    inv_crypto: Optional[float] = 0
+    inv_real_estate: Optional[float] = 0
+    note: Optional[str] = ""
+
+class MonthlyBody(BaseModel):
+    year_month: str
+    savings: Optional[float] = 0
+    overseas: Optional[float] = 0
+    isa: Optional[float] = 0
+    crypto: Optional[float] = 0
+    real_estate: Optional[float] = 0
+    other: Optional[float] = 0
+    inv_savings: Optional[float] = 0
+    inv_overseas: Optional[float] = 0
+    inv_isa: Optional[float] = 0
+    inv_crypto: Optional[float] = 0
+    inv_real_estate: Optional[float] = 0
     note: Optional[str] = ""
 
 
@@ -563,3 +594,80 @@ def delete_yearly(id: str, db: Session = Depends(get_db)):
     rec = db.query(models.YearlyRecord).filter_by(id=id).first()
     if not rec: raise HTTPException(404)
     db.delete(rec); db.commit()
+
+
+# ─── Monthly Records ─────────────────────────────────────────────────────────
+
+@app.get("/api/monthly")
+def list_monthly(db: Session = Depends(get_db)):
+    return db.query(models.MonthlyRecord).order_by(models.MonthlyRecord.year_month).all()
+
+@app.post("/api/monthly", status_code=201)
+def create_monthly(body: MonthlyBody, db: Session = Depends(get_db)):
+    exists = db.query(models.MonthlyRecord).filter_by(year_month=body.year_month).first()
+    if exists: raise HTTPException(400, f"{body.year_month} 기록이 이미 존재합니다")
+    data = body.model_dump()
+    data["total"] = data["savings"] + data["overseas"] + data["isa"] + data["crypto"] + data["real_estate"] + data["other"]
+    rec = models.MonthlyRecord(id=new_id(), **data)
+    db.add(rec); db.commit(); db.refresh(rec)
+    return rec
+
+@app.put("/api/monthly/{id}")
+def update_monthly(id: str, body: MonthlyBody, db: Session = Depends(get_db)):
+    rec = db.query(models.MonthlyRecord).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    data = body.model_dump()
+    data["total"] = data["savings"] + data["overseas"] + data["isa"] + data["crypto"] + data["real_estate"] + data["other"]
+    for k, v in data.items(): setattr(rec, k, v)
+    db.commit(); db.refresh(rec)
+    return rec
+
+@app.delete("/api/monthly/{id}", status_code=204)
+def delete_monthly(id: str, db: Session = Depends(get_db)):
+    rec = db.query(models.MonthlyRecord).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    db.delete(rec); db.commit()
+
+
+# ─── Migration: Yearly → Monthly ─────────────────────────────────────────────
+
+@app.post("/api/migrate/yearly-to-monthly")
+def migrate_yearly_to_monthly(db: Session = Depends(get_db)):
+    yearly_list = db.query(models.YearlyRecord).order_by(models.YearlyRecord.year).all()
+    created, skipped = [], []
+
+    for yr in yearly_list:
+        # 해당 연도 월간기록 중 가장 이른 달 확인
+        existing_months = (
+            db.query(models.MonthlyRecord)
+            .filter(models.MonthlyRecord.year_month.like(f"{yr.year}-%"))
+            .order_by(models.MonthlyRecord.year_month)
+            .all()
+        )
+        if existing_months:
+            skipped.append({"year": yr.year, "reason": f"{existing_months[0].year_month} 기록이 이미 존재합니다"})
+            continue
+
+        year_month = f"{yr.year}-01"
+        rec = models.MonthlyRecord(
+            id=new_id(),
+            year_month=year_month,
+            savings=yr.savings or 0,
+            overseas=yr.overseas or 0,
+            isa=yr.isa or 0,
+            crypto=yr.crypto or 0,
+            real_estate=yr.real_estate or 0,
+            other=yr.other or 0,
+            total=yr.total or 0,
+            inv_savings=getattr(yr, 'inv_savings', 0) or 0,
+            inv_overseas=getattr(yr, 'inv_overseas', 0) or 0,
+            inv_isa=getattr(yr, 'inv_isa', 0) or 0,
+            inv_crypto=getattr(yr, 'inv_crypto', 0) or 0,
+            inv_real_estate=getattr(yr, 'inv_real_estate', 0) or 0,
+            note=yr.note or '',
+        )
+        db.add(rec)
+        created.append({"year": yr.year, "year_month": year_month})
+
+    db.commit()
+    return {"created": created, "skipped": skipped}

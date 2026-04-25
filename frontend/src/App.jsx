@@ -6,6 +6,7 @@ import Overseas from './pages/Overseas'
 import ISA from './pages/ISA'
 import Crypto from './pages/Crypto'
 import RealEstate from './pages/RealEstate'
+import Monthly from './pages/Monthly'
 import Yearly from './pages/Yearly'
 import { getSettings, hasRemoteSession, isRemoteReadonly, remoteLogin, remoteLogout, updateSettings } from './api'
 
@@ -35,7 +36,7 @@ export default function App() {
 
   const toggleTheme = () => setThemeState(t => t === 'light' ? 'dark' : 'light')
 
-  const pages = { dashboard: Dashboard, savings: Savings, overseas: Overseas, isa: ISA, crypto: Crypto, realestate: RealEstate, yearly: Yearly }
+  const pages = { dashboard: Dashboard, savings: Savings, overseas: Overseas, isa: ISA, crypto: Crypto, realestate: RealEstate, monthly: Monthly, yearly: Yearly }
   const Page = pages[page]
 
   if (isRemoteReadonly && !remoteAuthed) {
