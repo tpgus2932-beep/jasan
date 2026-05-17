@@ -71,19 +71,21 @@ def yahoo_ticker_from_kiwoom(value: Any) -> str:
 
 
 class KiwoomClient:
-    def __init__(self):
+    def __init__(self, prefix: str = "KIWOOM"):
         _load_dotenv()
-        self.appkey = _env("KIWOOM_APP_KEY")
-        self.secretkey = _env("KIWOOM_APP_SECRET")
-        self.mock = _env("KIWOOM_USE_MOCK", "false").lower() in ("1", "true", "yes", "y")
-        self.host = _env("KIWOOM_API_HOST") or (
+        self.appkey    = _env(f"{prefix}_APP_KEY")
+        self.secretkey = _env(f"{prefix}_APP_SECRET")
+        self.mock      = _env("KIWOOM_USE_MOCK", "false").lower() in ("1", "true", "yes", "y")
+        self.host      = _env("KIWOOM_API_HOST") or (
             "https://mockapi.kiwoom.com" if self.mock else "https://api.kiwoom.com"
         )
-        self.timeout = float(_env("KIWOOM_TIMEOUT", "15") or 15)
+        self.timeout  = float(_env("KIWOOM_TIMEOUT", "15") or 15)
         self.exchange = _env("KIWOOM_DMST_STEX_TP", "KRX") or "KRX"
 
         if not self.appkey or not self.secretkey:
-            raise KiwoomConfigError("KIWOOM_APP_KEY and KIWOOM_APP_SECRET must be set in backend/.env")
+            raise KiwoomConfigError(
+                f"{prefix}_APP_KEY and {prefix}_APP_SECRET must be set in backend/.env"
+            )
 
     async def token(self) -> str:
         async with httpx.AsyncClient(timeout=self.timeout) as client:

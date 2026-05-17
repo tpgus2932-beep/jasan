@@ -67,6 +67,42 @@ class ISAHolding(Base):
     note = Column(Text, default="")
 
 
+class DainISARecord(Base):
+    __tablename__ = "dain_isa_history"
+    id    = Column(String, primary_key=True, default=new_id)
+    date  = Column(String, nullable=False)
+    value = Column(Float, default=0)
+    note  = Column(Text, default="")
+
+
+class DainISAHolding(Base):
+    __tablename__ = "dain_isa_holdings"
+    id     = Column(String, primary_key=True, default=new_id)
+    ticker = Column(String, nullable=False)
+    name   = Column(String, default="")
+    shares = Column(Float, default=0)
+    price  = Column(Float, default=0)
+    note   = Column(Text, default="")
+
+
+class ShinhanISARecord(Base):
+    __tablename__ = "shinhan_isa_history"
+    id = Column(String, primary_key=True, default=new_id)
+    date = Column(String, nullable=False)
+    value = Column(Float, default=0)
+    note = Column(Text, default="")
+
+
+class ShinhanISAHolding(Base):
+    __tablename__ = "shinhan_isa_holdings"
+    id = Column(String, primary_key=True, default=new_id)
+    ticker = Column(String, nullable=False)
+    name = Column(String, default="")
+    shares = Column(Float, default=0)
+    price = Column(Float, default=0)
+    note = Column(Text, default="")
+
+
 class CryptoHolding(Base):
     __tablename__ = "crypto_holdings"
     id = Column(String, primary_key=True, default=new_id)
@@ -126,6 +162,58 @@ class YearlyRecord(Base):
     inv_crypto      = Column(Float, default=0)
     inv_real_estate = Column(Float, default=0)
     note = Column(Text, default="")
+
+
+class FixedCost(Base):
+    __tablename__ = "fixed_costs"
+    id             = Column(String, primary_key=True, default=new_id)
+    name           = Column(String, nullable=False)
+    category       = Column(String, default="기타")
+    amount         = Column(Float, default=0)
+    billing_day    = Column(Integer, default=1)
+    payment_method = Column(String, default="자동이체")
+    status         = Column(String, default="active")
+    note           = Column(Text, default="")
+
+
+class PortfolioTemplate(Base):
+    __tablename__ = "portfolio_templates"
+    id                    = Column(String, primary_key=True, default=new_id)
+    name                  = Column(String, nullable=False)
+    note                  = Column(Text, default="")
+    rebal_interval_months = Column(Integer, default=6)
+    deviation_threshold   = Column(Float, default=5.0)
+    last_rebal_date       = Column(String, default="")
+
+
+class PortfolioCategory(Base):
+    __tablename__ = "portfolio_categories"
+    id          = Column(String, primary_key=True, default=new_id)
+    template_id = Column(String, nullable=False)
+    name        = Column(String, nullable=False)
+    color       = Column(String, default="#2563eb")
+    order_idx   = Column(Integer, default=0)
+    target      = Column(Float, default=0)
+
+
+class PortfolioAllocation(Base):
+    __tablename__ = "portfolio_allocations"
+    id          = Column(String, primary_key=True, default=new_id)
+    template_id = Column(String, nullable=False)
+    category_id = Column(String, nullable=False)
+    source_type = Column(String, nullable=False)  # overseas|isa|shinhan_isa|crypto|savings|realestate
+    source_id   = Column(String, nullable=False)
+
+
+class FixedSaving(Base):
+    __tablename__ = "fixed_savings"
+    id          = Column(String, primary_key=True, default=new_id)
+    name        = Column(String, nullable=False)
+    category    = Column(String, default="적금")   # 적금 | 주식 | ETF | 펀드 | 기타
+    amount      = Column(Float, default=0)
+    payment_day = Column(Integer, default=1)
+    status      = Column(String, default="active") # active | paused
+    note        = Column(Text, default="")
 
 
 class MonthlyRecord(Base):

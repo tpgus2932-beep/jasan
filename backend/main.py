@@ -13,6 +13,7 @@ from datetime import date
 from database import engine, get_db, Base
 import models
 from kiwoom import KiwoomAPIError, KiwoomClient, KiwoomConfigError
+from shinhan import ShinhanAPIError, ShinhanClient, ShinhanConfigError
 from upbit import UpbitAPIError, UpbitClient, UpbitConfigError
 
 Base.metadata.create_all(bind=engine)
@@ -52,6 +53,18 @@ def migrate():
         "ALTER TABLE monthly_records ADD COLUMN inv_isa REAL DEFAULT 0",
         "ALTER TABLE monthly_records ADD COLUMN inv_crypto REAL DEFAULT 0",
         "ALTER TABLE monthly_records ADD COLUMN inv_real_estate REAL DEFAULT 0",
+        "CREATE TABLE IF NOT EXISTS shinhan_isa_history (id TEXT PRIMARY KEY, date TEXT NOT NULL, value REAL DEFAULT 0, note TEXT DEFAULT '')",
+        "CREATE TABLE IF NOT EXISTS shinhan_isa_holdings (id TEXT PRIMARY KEY, ticker TEXT NOT NULL, name TEXT DEFAULT '', shares REAL DEFAULT 0, price REAL DEFAULT 0, note TEXT DEFAULT '')",
+        "CREATE TABLE IF NOT EXISTS dain_isa_history (id TEXT PRIMARY KEY, date TEXT NOT NULL, value REAL DEFAULT 0, note TEXT DEFAULT '')",
+        "CREATE TABLE IF NOT EXISTS dain_isa_holdings (id TEXT PRIMARY KEY, ticker TEXT NOT NULL, name TEXT DEFAULT '', shares REAL DEFAULT 0, price REAL DEFAULT 0, note TEXT DEFAULT '')",
+        "CREATE TABLE IF NOT EXISTS fixed_savings (id TEXT PRIMARY KEY, name TEXT NOT NULL, category TEXT DEFAULT '적금', amount REAL DEFAULT 0, payment_day INTEGER DEFAULT 1, status TEXT DEFAULT 'active', note TEXT DEFAULT '')",
+        "CREATE TABLE IF NOT EXISTS portfolio_templates (id TEXT PRIMARY KEY, name TEXT NOT NULL, note TEXT DEFAULT '')",
+        "CREATE TABLE IF NOT EXISTS portfolio_categories (id TEXT PRIMARY KEY, template_id TEXT NOT NULL, name TEXT NOT NULL, color TEXT DEFAULT '#2563eb', order_idx INTEGER DEFAULT 0)",
+        "CREATE TABLE IF NOT EXISTS portfolio_allocations (id TEXT PRIMARY KEY, template_id TEXT NOT NULL, category_id TEXT NOT NULL, source_type TEXT NOT NULL, source_id TEXT NOT NULL)",
+        "ALTER TABLE portfolio_templates ADD COLUMN rebal_interval_months INTEGER DEFAULT 6",
+        "ALTER TABLE portfolio_templates ADD COLUMN deviation_threshold REAL DEFAULT 5.0",
+        "ALTER TABLE portfolio_templates ADD COLUMN last_rebal_date TEXT DEFAULT ''",
+        "ALTER TABLE portfolio_categories ADD COLUMN target REAL DEFAULT 0",
     ]
     with engine.connect() as conn:
         for sql in migrations:
@@ -66,6 +79,47 @@ def migrate():
 
 class SettingsBody(BaseModel):
     fx: float
+
+class FixedCostBody(BaseModel):
+    name: str
+    category: Optional[str] = "기타"
+    amount: Optional[float] = 0
+    billing_day: Optional[int] = 1
+    payment_method: Optional[str] = "자동이체"
+    status: Optional[str] = "active"
+    note: Optional[str] = ""
+
+class FixedSavingBody(BaseModel):
+    name: str
+    category: Optional[str] = "적금"
+    amount: Optional[float] = 0
+    payment_day: Optional[int] = 1
+    status: Optional[str] = "active"
+    note: Optional[str] = ""
+
+class PortfolioTemplateBody(BaseModel):
+    name: str
+    note: Optional[str] = ""
+    rebal_interval_months: Optional[int] = 6
+    deviation_threshold: Optional[float] = 5.0
+    last_rebal_date: Optional[str] = ""
+
+class PortfolioCategoryBody(BaseModel):
+    name: str
+    color: Optional[str] = "#2563eb"
+    order_idx: Optional[int] = 0
+    target: Optional[float] = 0
+
+class RebalCompleteBody(BaseModel):
+    date: str
+
+class AllocationItem(BaseModel):
+    category_id: str
+    source_type: str
+    source_id: str
+
+class SaveAllocationsBody(BaseModel):
+    allocations: list[AllocationItem]
 
 class SavingBody(BaseModel):
     bank: Optional[str] = ""
@@ -154,8 +208,12 @@ class MonthlyBody(BaseModel):
 
 @app.get("/api/settings")
 def get_settings(db: Session = Depends(get_db)):
-    fx_row = db.query(models.Setting).filter_by(key="fx").first()
-    return {"fx": float(fx_row.value) if fx_row else 1350.0}
+    fx_row     = db.query(models.Setting).filter_by(key="fx").first()
+    income_row = db.query(models.Setting).filter_by(key="monthly_income").first()
+    return {
+        "fx": float(fx_row.value) if fx_row else 1350.0,
+        "monthly_income": float(income_row.value) if income_row else 0.0,
+    }
 
 
 @app.put("/api/settings")
@@ -167,6 +225,20 @@ def update_settings(body: SettingsBody, db: Session = Depends(get_db)):
         db.add(models.Setting(key="fx", value=str(body.fx)))
     db.commit()
     return {"fx": body.fx}
+
+
+class MonthlyIncomeBody(BaseModel):
+    monthly_income: float
+
+@app.put("/api/settings/monthly-income")
+def update_monthly_income(body: MonthlyIncomeBody, db: Session = Depends(get_db)):
+    row = db.query(models.Setting).filter_by(key="monthly_income").first()
+    if row:
+        row.value = str(body.monthly_income)
+    else:
+        db.add(models.Setting(key="monthly_income", value=str(body.monthly_income)))
+    db.commit()
+    return {"monthly_income": body.monthly_income}
 
 
 # ─── FX Rate ────────────────────────────────────────────────────────────────
@@ -454,6 +526,222 @@ def delete_isa(id: str, db: Session = Depends(get_db)):
     db.delete(rec); db.commit()
 
 
+@app.get("/api/shinhan-isa/holdings")
+def list_shinhan_isa_holdings(db: Session = Depends(get_db)):
+    return db.query(models.ShinhanISAHolding).all()
+
+
+@app.post("/api/shinhan-isa/holdings", status_code=201)
+def create_shinhan_isa_holding(body: ISAHoldingBody, db: Session = Depends(get_db)):
+    data = body.model_dump()
+    data["ticker"] = normalize_yahoo_ticker(data["ticker"])
+    rec = models.ShinhanISAHolding(id=new_id(), **data)
+    db.add(rec); db.commit(); db.refresh(rec)
+    return rec
+
+
+@app.put("/api/shinhan-isa/holdings/{id}")
+def update_shinhan_isa_holding(id: str, body: ISAHoldingBody, db: Session = Depends(get_db)):
+    rec = db.query(models.ShinhanISAHolding).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    data = body.model_dump()
+    data["ticker"] = normalize_yahoo_ticker(data["ticker"])
+    for k, v in data.items(): setattr(rec, k, v)
+    db.commit(); db.refresh(rec)
+    return rec
+
+
+@app.delete("/api/shinhan-isa/holdings/{id}", status_code=204)
+def delete_shinhan_isa_holding(id: str, db: Session = Depends(get_db)):
+    rec = db.query(models.ShinhanISAHolding).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    db.delete(rec); db.commit()
+
+
+@app.post("/api/shinhan-isa/sync")
+async def sync_shinhan_isa(db: Session = Depends(get_db)):
+    try:
+        data = await ShinhanClient().account_balance()
+    except ShinhanConfigError as e:
+        raise HTTPException(400, str(e))
+    except ShinhanAPIError as e:
+        raise HTTPException(502, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"Shinhan ISA sync failed: {e}")
+
+    positions = data["positions"]
+    existing = {h.ticker: h for h in db.query(models.ShinhanISAHolding).all()}
+    for pos in positions:
+        payload = {
+            "ticker": pos["ticker"],
+            "name": pos["name"],
+            "shares": pos["shares"],
+            "price": pos["price"],
+            "note": "Shinhan ISA API",
+        }
+        rec = existing.get(pos["ticker"])
+        if rec:
+            for k, v in payload.items():
+                setattr(rec, k, v)
+        else:
+            db.add(models.ShinhanISAHolding(id=new_id(), **payload))
+
+    sync_date = date.today().isoformat()
+    total = round(float(data["total"] or 0))
+    note = f"Shinhan ISA sync ({len(positions)} holdings)"
+    sync_records = (
+        db.query(models.ShinhanISARecord)
+        .filter(models.ShinhanISARecord.date == sync_date, models.ShinhanISARecord.note.like("Shinhan ISA sync%"))
+        .all()
+    )
+    if sync_records:
+        balance = sync_records[0]
+        balance.value = total
+        balance.note = note
+        for duplicate in sync_records[1:]:
+            db.delete(duplicate)
+    else:
+        balance = models.ShinhanISARecord(id=new_id(), date=sync_date, value=total, note=note)
+        db.add(balance)
+    db.commit()
+
+    return {
+        "date": balance.date,
+        "value": total,
+        "holdings": positions,
+        "count": len(positions),
+        "meta": data["meta"],
+    }
+
+
+@app.get("/api/shinhan-isa")
+def list_shinhan_isa(db: Session = Depends(get_db)):
+    return db.query(models.ShinhanISARecord).order_by(models.ShinhanISARecord.date).all()
+
+
+@app.post("/api/shinhan-isa", status_code=201)
+def create_shinhan_isa(body: ISABody, db: Session = Depends(get_db)):
+    rec = models.ShinhanISARecord(id=new_id(), **body.model_dump())
+    db.add(rec); db.commit(); db.refresh(rec)
+    return rec
+
+
+@app.delete("/api/shinhan-isa/{id}", status_code=204)
+def delete_shinhan_isa(id: str, db: Session = Depends(get_db)):
+    rec = db.query(models.ShinhanISARecord).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    db.delete(rec); db.commit()
+
+
+# ─── Dain ISA (김다인 키움) ───────────────────────────────────────────────────
+
+@app.get("/api/dain-isa/holdings")
+def list_dain_isa_holdings(db: Session = Depends(get_db)):
+    return db.query(models.DainISAHolding).all()
+
+
+@app.post("/api/dain-isa/holdings", status_code=201)
+def create_dain_isa_holding(body: ISAHoldingBody, db: Session = Depends(get_db)):
+    data = body.model_dump()
+    data["ticker"] = normalize_yahoo_ticker(data["ticker"])
+    rec = models.DainISAHolding(id=new_id(), **data)
+    db.add(rec); db.commit(); db.refresh(rec)
+    return rec
+
+
+@app.put("/api/dain-isa/holdings/{id}")
+def update_dain_isa_holding(id: str, body: ISAHoldingBody, db: Session = Depends(get_db)):
+    rec = db.query(models.DainISAHolding).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    data = body.model_dump()
+    data["ticker"] = normalize_yahoo_ticker(data["ticker"])
+    for k, v in data.items(): setattr(rec, k, v)
+    db.commit(); db.refresh(rec)
+    return rec
+
+
+@app.delete("/api/dain-isa/holdings/{id}", status_code=204)
+def delete_dain_isa_holding(id: str, db: Session = Depends(get_db)):
+    rec = db.query(models.DainISAHolding).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    db.delete(rec); db.commit()
+
+
+@app.post("/api/dain-isa/sync-kiwoom")
+async def sync_dain_isa_from_kiwoom(db: Session = Depends(get_db)):
+    try:
+        data = await KiwoomClient(prefix="KIWOOM2").account_balance()
+    except KiwoomConfigError as e:
+        raise HTTPException(400, str(e))
+    except KiwoomAPIError as e:
+        raise HTTPException(502, str(e))
+    except Exception as e:
+        raise HTTPException(502, f"Kiwoom ISA (김다인) sync failed: {e}")
+
+    positions = data["positions"]
+    existing = {h.ticker: h for h in db.query(models.DainISAHolding).all()}
+    for pos in positions:
+        payload = {
+            "ticker": pos["ticker"],
+            "name":   pos["name"],
+            "shares": pos["shares"],
+            "price":  pos["price"],
+            "note":   "Kiwoom REST API (김다인)",
+        }
+        rec = existing.get(pos["ticker"])
+        if rec:
+            for k, v in payload.items():
+                setattr(rec, k, v)
+        else:
+            db.add(models.DainISAHolding(id=new_id(), **payload))
+
+    sync_date = date.today().isoformat()
+    total = round(float(data["total"] or 0))
+    note = f"Kiwoom REST API sync 김다인 ({len(positions)} holdings)"
+    sync_records = (
+        db.query(models.DainISARecord)
+        .filter(models.DainISARecord.date == sync_date, models.DainISARecord.note.like("Kiwoom REST API sync 김다인%"))
+        .all()
+    )
+    if sync_records:
+        balance = sync_records[0]
+        balance.value = total
+        balance.note = note
+        for dup in sync_records[1:]:
+            db.delete(dup)
+    else:
+        balance = models.DainISARecord(id=new_id(), date=sync_date, value=total, note=note)
+        db.add(balance)
+    db.commit()
+
+    return {
+        "date":     balance.date,
+        "value":    total,
+        "holdings": positions,
+        "count":    len(positions),
+        "meta":     data.get("meta", {}),
+    }
+
+
+@app.get("/api/dain-isa")
+def list_dain_isa(db: Session = Depends(get_db)):
+    return db.query(models.DainISARecord).order_by(models.DainISARecord.date).all()
+
+
+@app.post("/api/dain-isa", status_code=201)
+def create_dain_isa(body: ISABody, db: Session = Depends(get_db)):
+    rec = models.DainISARecord(id=new_id(), **body.model_dump())
+    db.add(rec); db.commit(); db.refresh(rec)
+    return rec
+
+
+@app.delete("/api/dain-isa/{id}", status_code=204)
+def delete_dain_isa(id: str, db: Session = Depends(get_db)):
+    rec = db.query(models.DainISARecord).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    db.delete(rec); db.commit()
+
+
 # ─── Crypto ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/crypto/holdings")
@@ -671,3 +959,152 @@ def migrate_yearly_to_monthly(db: Session = Depends(get_db)):
 
     db.commit()
     return {"created": created, "skipped": skipped}
+
+
+# ─── Fixed Costs ─────────────────────────────────────────────────────────────
+
+@app.get("/api/fixed-costs")
+def list_fixed_costs(db: Session = Depends(get_db)):
+    return db.query(models.FixedCost).order_by(models.FixedCost.category, models.FixedCost.billing_day).all()
+
+@app.post("/api/fixed-costs", status_code=201)
+def create_fixed_cost(body: FixedCostBody, db: Session = Depends(get_db)):
+    rec = models.FixedCost(id=new_id(), **body.model_dump())
+    db.add(rec); db.commit(); db.refresh(rec)
+    return rec
+
+@app.put("/api/fixed-costs/{id}")
+def update_fixed_cost(id: str, body: FixedCostBody, db: Session = Depends(get_db)):
+    rec = db.query(models.FixedCost).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    for k, v in body.model_dump().items(): setattr(rec, k, v)
+    db.commit(); db.refresh(rec)
+    return rec
+
+@app.delete("/api/fixed-costs/{id}", status_code=204)
+def delete_fixed_cost(id: str, db: Session = Depends(get_db)):
+    rec = db.query(models.FixedCost).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    db.delete(rec); db.commit()
+
+
+# ─── Fixed Savings ────────────────────────────────────────────────────────────
+
+@app.get("/api/fixed-savings")
+def list_fixed_savings(db: Session = Depends(get_db)):
+    return db.query(models.FixedSaving).all()
+
+@app.post("/api/fixed-savings", status_code=201)
+def create_fixed_saving(body: FixedSavingBody, db: Session = Depends(get_db)):
+    rec = models.FixedSaving(id=new_id(), **body.model_dump())
+    db.add(rec); db.commit(); db.refresh(rec)
+    return rec
+
+@app.put("/api/fixed-savings/{id}")
+def update_fixed_saving(id: str, body: FixedSavingBody, db: Session = Depends(get_db)):
+    rec = db.query(models.FixedSaving).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    for k, v in body.model_dump().items(): setattr(rec, k, v)
+    db.commit(); db.refresh(rec)
+    return rec
+
+@app.delete("/api/fixed-savings/{id}", status_code=204)
+def delete_fixed_saving(id: str, db: Session = Depends(get_db)):
+    rec = db.query(models.FixedSaving).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    db.delete(rec); db.commit()
+
+
+# ─── Portfolio Templates ──────────────────────────────────────────────────────
+
+@app.get("/api/portfolio-templates")
+def list_portfolio_templates(db: Session = Depends(get_db)):
+    return db.query(models.PortfolioTemplate).all()
+
+@app.post("/api/portfolio-templates", status_code=201)
+def create_portfolio_template(body: PortfolioTemplateBody, db: Session = Depends(get_db)):
+    rec = models.PortfolioTemplate(id=new_id(), **body.model_dump())
+    db.add(rec); db.commit(); db.refresh(rec)
+    return rec
+
+@app.put("/api/portfolio-templates/{id}")
+def update_portfolio_template(id: str, body: PortfolioTemplateBody, db: Session = Depends(get_db)):
+    rec = db.query(models.PortfolioTemplate).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    for k, v in body.model_dump().items(): setattr(rec, k, v)
+    db.commit(); db.refresh(rec)
+    return rec
+
+@app.delete("/api/portfolio-templates/{id}", status_code=204)
+def delete_portfolio_template(id: str, db: Session = Depends(get_db)):
+    rec = db.query(models.PortfolioTemplate).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    # cascade: delete categories and allocations
+    db.query(models.PortfolioCategory).filter_by(template_id=id).delete()
+    db.query(models.PortfolioAllocation).filter_by(template_id=id).delete()
+    db.delete(rec); db.commit()
+
+
+# ─── Portfolio Categories ─────────────────────────────────────────────────────
+
+@app.get("/api/portfolio-templates/{template_id}/categories")
+def list_portfolio_categories(template_id: str, db: Session = Depends(get_db)):
+    return db.query(models.PortfolioCategory)\
+             .filter_by(template_id=template_id)\
+             .order_by(models.PortfolioCategory.order_idx)\
+             .all()
+
+@app.post("/api/portfolio-templates/{template_id}/categories", status_code=201)
+def create_portfolio_category(template_id: str, body: PortfolioCategoryBody, db: Session = Depends(get_db)):
+    rec = models.PortfolioCategory(id=new_id(), template_id=template_id, **body.model_dump())
+    db.add(rec); db.commit(); db.refresh(rec)
+    return rec
+
+@app.put("/api/portfolio-categories/{id}")
+def update_portfolio_category(id: str, body: PortfolioCategoryBody, db: Session = Depends(get_db)):
+    rec = db.query(models.PortfolioCategory).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    for k, v in body.model_dump().items(): setattr(rec, k, v)
+    db.commit(); db.refresh(rec)
+    return rec
+
+@app.delete("/api/portfolio-categories/{id}", status_code=204)
+def delete_portfolio_category(id: str, db: Session = Depends(get_db)):
+    rec = db.query(models.PortfolioCategory).filter_by(id=id).first()
+    if not rec: raise HTTPException(404)
+    db.query(models.PortfolioAllocation).filter_by(category_id=id).delete()
+    db.delete(rec); db.commit()
+
+
+# ─── Portfolio Allocations ────────────────────────────────────────────────────
+
+@app.get("/api/portfolio-templates/{template_id}/allocations")
+def get_portfolio_allocations(template_id: str, db: Session = Depends(get_db)):
+    return db.query(models.PortfolioAllocation).filter_by(template_id=template_id).all()
+
+@app.put("/api/portfolio-templates/{template_id}/allocations")
+def save_portfolio_allocations(template_id: str, body: SaveAllocationsBody, db: Session = Depends(get_db)):
+    # replace all allocations for this template
+    db.query(models.PortfolioAllocation).filter_by(template_id=template_id).delete()
+    for item in body.allocations:
+        rec = models.PortfolioAllocation(
+            id=new_id(),
+            template_id=template_id,
+            category_id=item.category_id,
+            source_type=item.source_type,
+            source_id=item.source_id,
+        )
+        db.add(rec)
+    db.commit()
+    return {"saved": len(body.allocations)}
+
+
+# ─── Portfolio Rebalancing ────────────────────────────────────────────────────
+
+@app.post("/api/portfolio-templates/{template_id}/rebalance")
+def record_rebalance(template_id: str, body: RebalCompleteBody, db: Session = Depends(get_db)):
+    rec = db.query(models.PortfolioTemplate).filter_by(id=template_id).first()
+    if not rec: raise HTTPException(404)
+    rec.last_rebal_date = body.date
+    db.commit(); db.refresh(rec)
+    return rec

@@ -60,11 +60,16 @@ const readTable = (table, order = null, params = {}) => {
 
 export const getSettings = () => isRemoteReadonly
   ? readTable('settings').then(rows => {
-      const fx = rows.find(row => row.key === 'fx')
-      return { fx: fx ? Number(fx.value) : 1350 }
+      const fx     = rows.find(row => row.key === 'fx')
+      const income = rows.find(row => row.key === 'monthly_income')
+      return {
+        fx: fx ? Number(fx.value) : 1350,
+        monthly_income: income ? Number(income.value) : 0,
+      }
     })
   : api.get('/settings').then(r => r.data)
 export const updateSettings = (data) => isRemoteReadonly ? readonlyReject() : api.put('/settings', data).then(r => r.data)
+export const updateMonthlyIncome = (monthly_income) => isRemoteReadonly ? readonlyReject() : api.put('/settings/monthly-income', { monthly_income }).then(r => r.data)
 export const fetchFxRate = () => isRemoteReadonly ? readonlyReject() : api.get('/fx-rate').then(r => r.data)
 export const fetchStockPrice = (ticker) => isRemoteReadonly ? readonlyReject() : api.get(`/stock-price/${ticker}`).then(r => r.data)
 export const fetchStockPrices = (tickers) => isRemoteReadonly ? readonlyReject() : api.post('/stock-prices', { tickers }).then(r => r.data)
@@ -91,6 +96,23 @@ export const createISAHolding = (data) => isRemoteReadonly ? readonlyReject() : 
 export const updateISAHolding = (id, data) => isRemoteReadonly ? readonlyReject() : api.put(`/isa/holdings/${id}`, data).then(r => r.data)
 export const deleteISAHolding = (id) => isRemoteReadonly ? readonlyReject() : api.delete(`/isa/holdings/${id}`)
 export const syncISAFromKiwoom = () => isRemoteReadonly ? readonlyReject() : api.post('/isa/sync-kiwoom').then(r => r.data)
+export const getShinhanISA = () => isRemoteReadonly ? readTable('shinhan_isa_history', 'date.asc') : api.get('/shinhan-isa').then(r => r.data)
+export const createShinhanISA = (data) => isRemoteReadonly ? readonlyReject() : api.post('/shinhan-isa', data).then(r => r.data)
+export const deleteShinhanISA = (id) => isRemoteReadonly ? readonlyReject() : api.delete(`/shinhan-isa/${id}`)
+export const getShinhanISAHoldings = () => isRemoteReadonly ? readTable('shinhan_isa_holdings') : api.get('/shinhan-isa/holdings').then(r => r.data)
+export const createShinhanISAHolding = (data) => isRemoteReadonly ? readonlyReject() : api.post('/shinhan-isa/holdings', data).then(r => r.data)
+export const updateShinhanISAHolding = (id, data) => isRemoteReadonly ? readonlyReject() : api.put(`/shinhan-isa/holdings/${id}`, data).then(r => r.data)
+export const deleteShinhanISAHolding = (id) => isRemoteReadonly ? readonlyReject() : api.delete(`/shinhan-isa/holdings/${id}`)
+export const syncISAFromShinhan = () => isRemoteReadonly ? readonlyReject() : api.post('/shinhan-isa/sync').then(r => r.data)
+
+export const getDainISA = () => isRemoteReadonly ? readTable('dain_isa_history', 'date.asc') : api.get('/dain-isa').then(r => r.data)
+export const createDainISA = (data) => isRemoteReadonly ? readonlyReject() : api.post('/dain-isa', data).then(r => r.data)
+export const deleteDainISA = (id) => isRemoteReadonly ? readonlyReject() : api.delete(`/dain-isa/${id}`)
+export const getDainISAHoldings = () => isRemoteReadonly ? readTable('dain_isa_holdings') : api.get('/dain-isa/holdings').then(r => r.data)
+export const createDainISAHolding = (data) => isRemoteReadonly ? readonlyReject() : api.post('/dain-isa/holdings', data).then(r => r.data)
+export const updateDainISAHolding = (id, data) => isRemoteReadonly ? readonlyReject() : api.put(`/dain-isa/holdings/${id}`, data).then(r => r.data)
+export const deleteDainISAHolding = (id) => isRemoteReadonly ? readonlyReject() : api.delete(`/dain-isa/holdings/${id}`)
+export const syncDainISAFromKiwoom = () => isRemoteReadonly ? readonlyReject() : api.post('/dain-isa/sync-kiwoom').then(r => r.data)
 
 export const getCryptoHoldings = () => isRemoteReadonly ? readTable('crypto_holdings', 'value.desc') : api.get('/crypto/holdings').then(r => r.data)
 export const getCryptoHistory = () => isRemoteReadonly ? readTable('crypto_history', 'date.asc') : api.get('/crypto/history').then(r => r.data)
@@ -107,6 +129,34 @@ export const updateYearly = (id, data) => isRemoteReadonly ? readonlyReject() : 
 export const deleteYearly = (id) => isRemoteReadonly ? readonlyReject() : api.delete(`/yearly/${id}`)
 
 export const migrateYearlyToMonthly = () => isRemoteReadonly ? readonlyReject() : api.post('/migrate/yearly-to-monthly').then(r => r.data)
+
+export const getFixedCosts = () => isRemoteReadonly ? readTable('fixed_costs') : api.get('/fixed-costs').then(r => r.data)
+export const createFixedCost = (data) => isRemoteReadonly ? readonlyReject() : api.post('/fixed-costs', data).then(r => r.data)
+export const updateFixedCost = (id, data) => isRemoteReadonly ? readonlyReject() : api.put(`/fixed-costs/${id}`, data).then(r => r.data)
+export const deleteFixedCost = (id) => isRemoteReadonly ? readonlyReject() : api.delete(`/fixed-costs/${id}`)
+
+export const getFixedSavings = () => isRemoteReadonly ? readTable('fixed_savings') : api.get('/fixed-savings').then(r => r.data)
+export const createFixedSaving = (data) => isRemoteReadonly ? readonlyReject() : api.post('/fixed-savings', data).then(r => r.data)
+export const updateFixedSaving = (id, data) => isRemoteReadonly ? readonlyReject() : api.put(`/fixed-savings/${id}`, data).then(r => r.data)
+export const deleteFixedSaving = (id) => isRemoteReadonly ? readonlyReject() : api.delete(`/fixed-savings/${id}`)
+
+export const getPortfolioTemplates = () => isRemoteReadonly ? readTable('portfolio_templates') : api.get('/portfolio-templates').then(r => r.data)
+export const createPortfolioTemplate = (data) => isRemoteReadonly ? readonlyReject() : api.post('/portfolio-templates', data).then(r => r.data)
+export const updatePortfolioTemplate = (id, data) => isRemoteReadonly ? readonlyReject() : api.put(`/portfolio-templates/${id}`, data).then(r => r.data)
+export const deletePortfolioTemplate = (id) => isRemoteReadonly ? readonlyReject() : api.delete(`/portfolio-templates/${id}`)
+
+export const getPortfolioCategories = (templateId) => isRemoteReadonly
+  ? readTable('portfolio_categories', 'order_idx.asc', { template_id: `eq.${templateId}` })
+  : api.get(`/portfolio-templates/${templateId}/categories`).then(r => r.data)
+export const createPortfolioCategory = (templateId, data) => isRemoteReadonly ? readonlyReject() : api.post(`/portfolio-templates/${templateId}/categories`, data).then(r => r.data)
+export const updatePortfolioCategory = (id, data) => isRemoteReadonly ? readonlyReject() : api.put(`/portfolio-categories/${id}`, data).then(r => r.data)
+export const deletePortfolioCategory = (id) => isRemoteReadonly ? readonlyReject() : api.delete(`/portfolio-categories/${id}`)
+
+export const getPortfolioAllocations = (templateId) => isRemoteReadonly
+  ? readTable('portfolio_allocations', null, { template_id: `eq.${templateId}` })
+  : api.get(`/portfolio-templates/${templateId}/allocations`).then(r => r.data)
+export const savePortfolioAllocations = (templateId, allocations) => isRemoteReadonly ? readonlyReject() : api.put(`/portfolio-templates/${templateId}/allocations`, { allocations }).then(r => r.data)
+export const recordRebalance = (templateId, date) => isRemoteReadonly ? readonlyReject() : api.post(`/portfolio-templates/${templateId}/rebalance`, { date }).then(r => r.data)
 
 export const getMonthly = () => isRemoteReadonly ? readTable('monthly_records', 'year_month.asc') : api.get('/monthly').then(r => r.data)
 export const createMonthly = (data) => isRemoteReadonly ? readonlyReject() : api.post('/monthly', data).then(r => r.data)

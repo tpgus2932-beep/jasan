@@ -1,14 +1,16 @@
 import { useApp } from '../App'
 
 const MENU = [
-  { id: 'dashboard', icon: '▦',  label: '대시보드' },
-  { id: 'savings',   icon: '🏦', label: '적금' },
-  { id: 'overseas',  icon: '🌐', label: '해외직투' },
-  { id: 'isa',       icon: '📈', label: '키움 ISA' },
-  { id: 'crypto',    icon: '₿',  label: '코인' },
-  { id: 'realestate',icon: '🏠', label: '부동산' },
-  { id: 'monthly',   icon: '🗓', label: '월간기록' },
-  { id: 'yearly',    icon: '📅', label: '연간기록' },
+  { id: 'dashboard', icon: '🏠', label: '대시보드' },
+  { id: 'savings', icon: '💰', label: '적금' },
+  { id: 'overseas', icon: '📊', label: '해외주식' },
+  { id: 'isa', icon: '📈', label: '키움 ISA' },
+  { id: 'crypto', icon: '🪙', label: '코인' },
+  { id: 'realestate',  icon: '🏘', label: '부동산' },
+  { id: 'fixedcosts',  icon: '💰', label: '고정비용' },
+  { id: 'portfolio',   icon: '🎯', label: '자산배분' },
+  { id: 'monthly',     icon: '🗓', label: '월간기록' },
+  { id: 'yearly', icon: '📚', label: '연간기록' },
 ]
 
 const today = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })

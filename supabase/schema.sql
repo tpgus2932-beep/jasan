@@ -52,6 +52,22 @@ create table if not exists isa_holdings (
   note text default ''
 );
 
+create table if not exists shinhan_isa_history (
+  id text primary key,
+  date text not null,
+  value double precision default 0,
+  note text default ''
+);
+
+create table if not exists shinhan_isa_holdings (
+  id text primary key,
+  ticker text not null,
+  name text default '',
+  shares double precision default 0,
+  price double precision default 0,
+  note text default ''
+);
+
 create table if not exists crypto_holdings (
   id text primary key,
   market text not null,
@@ -136,6 +152,8 @@ alter table overseas_holdings enable row level security;
 alter table rebal_history enable row level security;
 alter table isa_history enable row level security;
 alter table isa_holdings enable row level security;
+alter table shinhan_isa_history enable row level security;
+alter table shinhan_isa_holdings enable row level security;
 alter table crypto_holdings enable row level security;
 alter table crypto_history enable row level security;
 alter table real_estate enable row level security;
@@ -148,6 +166,8 @@ drop policy if exists "read overseas_holdings" on overseas_holdings;
 drop policy if exists "read rebal_history" on rebal_history;
 drop policy if exists "read isa_history" on isa_history;
 drop policy if exists "read isa_holdings" on isa_holdings;
+drop policy if exists "read shinhan_isa_history" on shinhan_isa_history;
+drop policy if exists "read shinhan_isa_holdings" on shinhan_isa_holdings;
 drop policy if exists "read crypto_holdings" on crypto_holdings;
 drop policy if exists "read crypto_history" on crypto_history;
 drop policy if exists "read real_estate" on real_estate;
@@ -160,6 +180,8 @@ create policy "read overseas_holdings" on overseas_holdings for select using (au
 create policy "read rebal_history" on rebal_history for select using (auth.role() = 'authenticated');
 create policy "read isa_history" on isa_history for select using (auth.role() = 'authenticated');
 create policy "read isa_holdings" on isa_holdings for select using (auth.role() = 'authenticated');
+create policy "read shinhan_isa_history" on shinhan_isa_history for select using (auth.role() = 'authenticated');
+create policy "read shinhan_isa_holdings" on shinhan_isa_holdings for select using (auth.role() = 'authenticated');
 create policy "read crypto_holdings" on crypto_holdings for select using (auth.role() = 'authenticated');
 create policy "read crypto_history" on crypto_history for select using (auth.role() = 'authenticated');
 create policy "read real_estate" on real_estate for select using (auth.role() = 'authenticated');
