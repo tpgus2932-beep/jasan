@@ -12,11 +12,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install psycopg2
+        run: pip install psycopg2-binary
+
       - name: Apply schema to Supabase
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          HOST=$(echo "$DATABASE_URL" | sed 's|.*@||' | sed 's|:.*||')
-          IPV4=$(getent ahostsv4 "$HOST" | head -1 | awk '{print $1}')
-          FIXED_URL=$(echo "$DATABASE_URL" | sed "s/$HOST/$IPV4/")
-          psql "$FIXED_URL" -f supabase/schema.sql
+          python3 << 'EOF'
+          import psycopg2, os, socket
+
+          url = os.environ["DATABASE_URL"]
+          conn = psycopg2.connect(url, connect_timeout=15)
+          conn.autocommit = True
+          cur = conn.cursor()
+          with open("supabase/schema.sql", "r") as f:
+              sql = f.read()
+          cur.execute(sql)
+          conn.close()
+          print("Supabase schema sync complete")
+          EOF
