@@ -146,6 +146,74 @@ alter table yearly_records add column if not exists inv_isa double precision def
 alter table yearly_records add column if not exists inv_crypto double precision default 0;
 alter table yearly_records add column if not exists inv_real_estate double precision default 0;
 
+create table if not exists dain_isa_history (
+  id text primary key,
+  date text not null,
+  value double precision default 0,
+  note text default ''
+);
+
+create table if not exists dain_isa_holdings (
+  id text primary key,
+  ticker text not null,
+  name text default '',
+  shares double precision default 0,
+  price double precision default 0,
+  note text default ''
+);
+
+create table if not exists fixed_costs (
+  id text primary key,
+  name text not null,
+  category text default '기타',
+  amount double precision default 0,
+  billing_day integer default 1,
+  payment_method text default '자동이체',
+  status text default 'active',
+  note text default ''
+);
+
+create table if not exists fixed_savings (
+  id text primary key,
+  name text not null,
+  category text default '적금',
+  amount double precision default 0,
+  payment_day integer default 1,
+  status text default 'active',
+  note text default ''
+);
+
+create table if not exists portfolio_templates (
+  id text primary key,
+  name text not null,
+  note text default '',
+  rebal_interval_months integer default 6,
+  deviation_threshold double precision default 5.0,
+  last_rebal_date text default ''
+);
+
+create table if not exists portfolio_categories (
+  id text primary key,
+  template_id text not null,
+  name text not null,
+  color text default '#2563eb',
+  order_idx integer default 0,
+  target double precision default 0
+);
+
+create table if not exists portfolio_allocations (
+  id text primary key,
+  template_id text not null,
+  category_id text not null,
+  source_type text not null,
+  source_id text not null
+);
+
+alter table portfolio_templates add column if not exists rebal_interval_months integer default 6;
+alter table portfolio_templates add column if not exists deviation_threshold double precision default 5.0;
+alter table portfolio_templates add column if not exists last_rebal_date text default '';
+alter table portfolio_categories add column if not exists target double precision default 0;
+
 alter table settings enable row level security;
 alter table savings enable row level security;
 alter table overseas_holdings enable row level security;
@@ -159,6 +227,13 @@ alter table crypto_history enable row level security;
 alter table real_estate enable row level security;
 alter table yearly_records enable row level security;
 alter table monthly_records enable row level security;
+alter table dain_isa_history enable row level security;
+alter table dain_isa_holdings enable row level security;
+alter table fixed_costs enable row level security;
+alter table fixed_savings enable row level security;
+alter table portfolio_templates enable row level security;
+alter table portfolio_categories enable row level security;
+alter table portfolio_allocations enable row level security;
 
 drop policy if exists "read settings" on settings;
 drop policy if exists "read savings" on savings;
@@ -187,3 +262,19 @@ create policy "read crypto_history" on crypto_history for select using (auth.rol
 create policy "read real_estate" on real_estate for select using (auth.role() = 'authenticated');
 create policy "read yearly_records" on yearly_records for select using (auth.role() = 'authenticated');
 create policy "read monthly_records" on monthly_records for select using (auth.role() = 'authenticated');
+
+drop policy if exists "read dain_isa_history" on dain_isa_history;
+drop policy if exists "read dain_isa_holdings" on dain_isa_holdings;
+drop policy if exists "read fixed_costs" on fixed_costs;
+drop policy if exists "read fixed_savings" on fixed_savings;
+drop policy if exists "read portfolio_templates" on portfolio_templates;
+drop policy if exists "read portfolio_categories" on portfolio_categories;
+drop policy if exists "read portfolio_allocations" on portfolio_allocations;
+
+create policy "read dain_isa_history" on dain_isa_history for select using (auth.role() = 'authenticated');
+create policy "read dain_isa_holdings" on dain_isa_holdings for select using (auth.role() = 'authenticated');
+create policy "read fixed_costs" on fixed_costs for select using (auth.role() = 'authenticated');
+create policy "read fixed_savings" on fixed_savings for select using (auth.role() = 'authenticated');
+create policy "read portfolio_templates" on portfolio_templates for select using (auth.role() = 'authenticated');
+create policy "read portfolio_categories" on portfolio_categories for select using (auth.role() = 'authenticated');
+create policy "read portfolio_allocations" on portfolio_allocations for select using (auth.role() = 'authenticated');
