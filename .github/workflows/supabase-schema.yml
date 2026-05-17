@@ -12,17 +12,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
       - name: Apply schema to Supabase
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_PASSWORD }}
+          PGPASSWORD: ${{ secrets.SUPABASE_PASSWORD }}
         run: |
-          supabase link --project-ref kscsvrvblpntvjajnrit --password "$SUPABASE_DB_PASSWORD"
-          ENCODED_PWD=$(python3 -c "import urllib.parse,os; print(urllib.parse.quote(os.environ['SUPABASE_DB_PASSWORD'], safe=''))")
-          supabase db query \
-            --db-url "postgresql://postgres.kscsvrvblpntvjajnrit:${ENCODED_PWD}@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require" \
-            < supabase/schema.sql
+          ENCODED_PWD=$(python3 -c "import urllib.parse,os; print(urllib.parse.quote(os.environ['PGPASSWORD'], safe=''))")
+          psql "postgresql://postgres.kscsvrvblpntvjajnrit:${ENCODED_PWD}@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require" \
+            -f supabase/schema.sql
