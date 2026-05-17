@@ -15,4 +15,8 @@ jobs:
       - name: Apply schema to Supabase
         env:
           DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: psql "$DATABASE_URL" -f supabase/schema.sql
+        run: |
+          HOST=$(echo "$DATABASE_URL" | sed 's|.*@||' | sed 's|:.*||')
+          IPV4=$(getent ahostsv4 "$HOST" | head -1 | awk '{print $1}')
+          FIXED_URL=$(echo "$DATABASE_URL" | sed "s/$HOST/$IPV4/")
+          psql "$FIXED_URL" -f supabase/schema.sql
