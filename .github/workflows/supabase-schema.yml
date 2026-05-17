@@ -22,4 +22,7 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_PASSWORD }}
         run: |
           supabase link --project-ref kscsvrvblpntvjajnrit --password "$SUPABASE_DB_PASSWORD"
-          supabase db query < supabase/schema.sql
+          ENCODED_PWD=$(python3 -c "import urllib.parse,os; print(urllib.parse.quote(os.environ['SUPABASE_DB_PASSWORD'], safe=''))")
+          supabase db query \
+            --db-url "postgresql://postgres.kscsvrvblpntvjajnrit:${ENCODED_PWD}@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres?sslmode=require" \
+            < supabase/schema.sql
