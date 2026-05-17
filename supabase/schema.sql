@@ -1,4 +1,4 @@
--- schema v11
+-- schema v12
 create table if not exists settings (
   key text primary key,
   value text not null
