@@ -22,4 +22,4 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_PASSWORD }}
         run: |
           supabase link --project-ref kscsvrvblpntvjajnrit --password "$SUPABASE_DB_PASSWORD"
-          supabase db execute --file supabase/schema.sql
+          supabase db query "$(cat supabase/schema.sql)"
