@@ -17,19 +17,17 @@ jobs:
 
       - name: Apply schema to Supabase
         env:
-          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_PASSWORD: ${{ secrets.SUPABASE_PASSWORD }}
         run: |
           python3 << 'EOF'
-          import psycopg2, os, urllib.parse
+          import psycopg2, os
 
-          url = os.environ["DATABASE_URL"]
-          parsed = urllib.parse.urlparse(url)
           conn = psycopg2.connect(
-              host=parsed.hostname,
-              port=parsed.port or 5432,
-              user=urllib.parse.unquote(parsed.username or ""),
-              password=urllib.parse.unquote(parsed.password or ""),
-              dbname=(parsed.path or "/postgres").lstrip("/"),
+              host="aws-1-ap-northeast-1.pooler.supabase.com",
+              port=5432,
+              user="postgres.kscsvrvblpntvjajnrit",
+              password=os.environ["SUPABASE_PASSWORD"],
+              dbname="postgres",
               connect_timeout=15,
               sslmode="require"
           )
