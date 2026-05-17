@@ -1,0 +1,18 @@
+name: Sync Supabase Schema
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/schema.sql'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply schema to Supabase
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: psql "$DATABASE_URL" -f supabase/schema.sql
