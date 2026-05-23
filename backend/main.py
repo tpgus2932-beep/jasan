@@ -5,6 +5,7 @@ from sqlalchemy import text
 from pydantic import BaseModel
 from typing import Optional
 import uuid
+import asyncio
 import httpx
 import yfinance as yf
 from concurrent.futures import ThreadPoolExecutor
@@ -1108,3 +1109,173 @@ def record_rebalance(template_id: str, body: RebalCompleteBody, db: Session = De
     rec.last_rebal_date = body.date
     db.commit(); db.refresh(rec)
     return rec
+
+
+# ─── Ticker info (inception date) ────────────────────────────────────────────
+
+@app.post("/api/ticker-info")
+async def get_ticker_info(payload: dict):
+    """Returns the earliest available date for each ticker."""
+    tickers = [
+        t for t in payload.get("tickers", [])
+        if t and t.strip().upper() not in ("", "CASH", "현금")
+    ]
+    if not tickers:
+        return {}
+
+    loop = asyncio.get_running_loop()
+
+    async def _fetch_one(ticker: str):
+        def _inner():
+            try:
+                hist = yf.Ticker(ticker).history(period="max", auto_adjust=True)
+                if hist.empty:
+                    return None
+                return hist.index[0].strftime("%Y-%m-%d")
+            except Exception:
+                return None
+        return ticker, await loop.run_in_executor(None, _inner)
+
+    results = await asyncio.gather(*[_fetch_one(t) for t in tickers])
+    return {ticker: date for ticker, date in results if date}
+
+
+# ─── Backtest ─────────────────────────────────────────────────────────────────
+
+@app.post("/api/backtest")
+async def run_backtest(payload: dict):
+    """
+    payload: {
+      categories: [{name, target, ticker, color}],
+      start_date: "2015-01-01",
+      end_date: "2024-12-31",
+      initial_investment: 10000000,
+      rebal_frequency: "monthly"|"quarterly"|"annual"|"none"
+    }
+    """
+    import pandas as pd  # noqa: PLC0415 — lazy import to keep startup fast
+
+    categories  = payload.get("categories", [])
+    start_date  = payload.get("start_date",  "2015-01-01")
+    end_date    = payload.get("end_date",    date.today().isoformat())
+    initial     = float(payload.get("initial_investment", 10_000_000))
+    rebal_freq  = payload.get("rebal_frequency", "quarterly")
+
+    if not categories:
+        raise HTTPException(400, "카테고리가 없습니다")
+
+    total_target = sum(c.get("target", 0) for c in categories)
+    if total_target <= 0:
+        raise HTTPException(400, "목표비중 합이 0입니다")
+
+    def _is_cash(c):
+        return (c.get("ticker") or "").strip().upper() in ("", "CASH", "현금")
+
+    ticker_cats = [c for c in categories if not _is_cash(c)]
+    cash_weight = sum(c.get("target", 0) for c in categories if _is_cash(c)) / total_target
+    weights     = {c["ticker"].strip(): c["target"] / total_target for c in ticker_cats}
+    tickers     = list(weights.keys())
+
+    # ── fetch total-return price data (배당 재투자 반영) ─────────────────────
+    # yf.Ticker().history(auto_adjust=True) 는 배당락 전 가격을 소급 조정하므로
+    # 수익률을 계산하면 '배당 재투자 총수익률(Total Return)'이 자동으로 반영됩니다.
+    if tickers:
+        loop = asyncio.get_running_loop()
+
+        async def _fetch_one(t: str):
+            def _inner():
+                hist = yf.Ticker(t).history(
+                    start=start_date, end=end_date,
+                    auto_adjust=True,   # 배당+분할 소급 조정 → total return
+                    actions=False,
+                )
+                if hist.empty:
+                    return None
+                return pd.Series(hist["Close"].values, index=hist.index, name=t)
+            return t, await loop.run_in_executor(None, _inner)
+
+        try:
+            fetched = await asyncio.gather(*[_fetch_one(t) for t in tickers])
+        except Exception as e:
+            raise HTTPException(502, f"Yahoo Finance 오류: {e}")
+
+        series_map = {t: s for t, s in fetched if s is not None}
+        if not series_map:
+            raise HTTPException(502, f"데이터 없음: {', '.join(tickers)}")
+
+        price_df = pd.DataFrame(series_map)
+        monthly  = price_df.resample("ME").last().ffill()
+        ret_df   = monthly.pct_change().dropna(how="all")
+        dates    = list(ret_df.index)
+    else:
+        ret_df = None
+        dates  = []
+
+    # ── simulation ────────────────────────────────────────────────────────────
+    rebal_map = {"monthly": 1, "quarterly": 3, "annual": 12, "none": 99999}
+    rebal_n   = rebal_map.get(rebal_freq, 3)
+
+    port     = {t: initial * weights[t] for t in tickers}
+    cash_val = initial * cash_weight
+    peak     = initial
+
+    if not dates:
+        series = [{"date": start_date[:7], "value": round(initial), "drawdown": 0.0}]
+    else:
+        series = [{"date": dates[0].strftime("%Y-%m"), "value": round(initial), "drawdown": 0.0}]
+
+        for i, dt in enumerate(dates):
+            for t in tickers:
+                if ret_df is not None and t in ret_df.columns:
+                    r = ret_df.at[dt, t]
+                    if pd.notna(r):
+                        port[t] = port.get(t, 0.0) * (1 + float(r))
+
+            total = sum(port.values()) + cash_val
+            peak  = max(peak, total)
+            dd    = (total - peak) / peak * 100
+
+            series.append({
+                "date":     dt.strftime("%Y-%m"),
+                "value":    round(total),
+                "drawdown": round(dd, 2),
+            })
+
+            if (i + 1) % rebal_n == 0:
+                for t in tickers:
+                    port[t] = total * weights[t]
+                cash_val = total * cash_weight
+
+    # ── statistics ───────────────────────────────────────────────────────────
+    s0, se = series[0]["value"], series[-1]["value"]
+    n_m    = len(series) - 1
+    n_y    = n_m / 12 if n_m > 0 else 1
+
+    cagr         = ((se / s0) ** (1 / n_y) - 1) * 100 if s0 > 0 else 0
+    total_return = (se - s0) / s0 * 100 if s0 > 0 else 0
+    max_dd       = min(s["drawdown"] for s in series)
+
+    vals   = [s["value"] for s in series]
+    m_rets = [(vals[i] - vals[i-1]) / vals[i-1]
+              for i in range(1, len(vals)) if vals[i-1] > 0]
+    if m_rets:
+        mu  = sum(m_rets) / len(m_rets)
+        var = sum((r - mu) ** 2 for r in m_rets) / len(m_rets)
+        vol = (var ** 0.5) * (12 ** 0.5) * 100
+    else:
+        vol = 0.0
+    sharpe = cagr / vol if vol > 0 else 0.0
+
+    return {
+        "series": series,
+        "stats": {
+            "cagr":         round(cagr,         2),
+            "total_return": round(total_return,  2),
+            "max_drawdown": round(max_dd,        2),
+            "sharpe":       round(sharpe,        2),
+            "volatility":   round(vol,           2),
+            "start_value":  s0,
+            "end_value":    se,
+            "months":       n_m,
+        },
+    }

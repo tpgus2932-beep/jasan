@@ -158,6 +158,9 @@ export const getPortfolioAllocations = (templateId) => isRemoteReadonly
 export const savePortfolioAllocations = (templateId, allocations) => isRemoteReadonly ? readonlyReject() : api.put(`/portfolio-templates/${templateId}/allocations`, { allocations }).then(r => r.data)
 export const recordRebalance = (templateId, date) => isRemoteReadonly ? readonlyReject() : api.post(`/portfolio-templates/${templateId}/rebalance`, { date }).then(r => r.data)
 
+export const getTickerInfo = (tickers) => api.post('/ticker-info', { tickers }).then(r => r.data)
+export const runBacktest = (payload) => api.post('/backtest', payload).then(r => r.data)
+
 export const getMonthly = () => isRemoteReadonly ? readTable('monthly_records', 'year_month.asc') : api.get('/monthly').then(r => r.data)
 export const createMonthly = (data) => isRemoteReadonly ? readonlyReject() : api.post('/monthly', data).then(r => r.data)
 export const updateMonthly = (id, data) => isRemoteReadonly ? readonlyReject() : api.put(`/monthly/${id}`, data).then(r => r.data)

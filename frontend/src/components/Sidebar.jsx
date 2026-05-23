@@ -9,6 +9,7 @@ const MENU = [
   { id: 'realestate',  icon: '🏘', label: '부동산' },
   { id: 'fixedcosts',  icon: '💰', label: '고정비용' },
   { id: 'portfolio',   icon: '🎯', label: '자산배분' },
+  { id: 'backtest',    icon: '📉', label: '백테스팅' },
   { id: 'monthly',     icon: '🗓', label: '월간기록' },
   { id: 'yearly', icon: '📚', label: '연간기록' },
 ]

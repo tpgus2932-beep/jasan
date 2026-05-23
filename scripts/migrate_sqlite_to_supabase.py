@@ -17,11 +17,20 @@ TABLES = [
     "rebal_history",
     "isa_history",
     "isa_holdings",
+    "dain_isa_history",
+    "dain_isa_holdings",
+    "shinhan_isa_history",
+    "shinhan_isa_holdings",
     "crypto_holdings",
     "crypto_history",
     "real_estate",
     "yearly_records",
     "monthly_records",
+    "fixed_costs",
+    "fixed_savings",
+    "portfolio_templates",
+    "portfolio_categories",
+    "portfolio_allocations",
 ]
 
 

@@ -100,7 +100,10 @@ class KiwoomClient:
             )
         if resp.status_code >= 400:
             raise KiwoomAPIError(f"Kiwoom token request failed: {resp.status_code} {resp.text[:300]}")
-        data = json.loads(resp.content.decode("utf-8-sig"))
+        raw_text = resp.content.decode("utf-8-sig").strip()
+        if not raw_text:
+            raise KiwoomAPIError(f"Kiwoom token request returned empty body (status {resp.status_code}). 앱키/시크릿 확인 또는 키움 OpenAPI 신청 여부를 확인하세요.")
+        data = json.loads(raw_text)
         token = data.get("token") or data.get("access_token")
         if not token:
             raise KiwoomAPIError("Kiwoom token response did not include token")
@@ -125,7 +128,10 @@ class KiwoomClient:
                 resp = await client.post(f"{self.host}/api/dostk/acnt", headers=req_headers, json=body)
                 if resp.status_code >= 400:
                     raise KiwoomAPIError(f"Kiwoom {api_id} failed: {resp.status_code} {resp.text[:500]}")
-                data = json.loads(resp.content.decode("utf-8-sig"))
+                raw_text = resp.content.decode("utf-8-sig").strip()
+                if not raw_text:
+                    raise KiwoomAPIError(f"Kiwoom {api_id} returned empty body (status {resp.status_code})")
+                data = json.loads(raw_text)
                 self._merge_body(all_body, data)
 
                 cont_yn = resp.headers.get("cont-yn", "N")
